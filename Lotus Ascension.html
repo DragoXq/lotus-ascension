@@ -3772,13 +3772,17 @@ function selectGender(g) {
       EXP.battleTimer = b;
       const eb = document.getElementById('exp-btn'); if (eb) eb.style.display = 'none';
       const ava = (typeof getHeroAvatar === 'function') ? getHeroAvatar() : '🧙';
+      const avaIsImg = !!ava && /^data:image\//.test(ava);
+      const loc = (typeof LOCATIONS !== 'undefined' && state.story && LOCATIONS.find) ? LOCATIONS.find(function(l){ return l.id === state.story.locationId; }) : null;
+      const locImg = (loc && loc.img) || (typeof LOCATIONS !== 'undefined' && LOCATIONS[0] && LOCATIONS[0].img) || '';
       const wrap = document.createElement('div');
       wrap.id = 'bs-screen'; wrap.className = 'bs-screen';
       wrap.innerHTML =
         '<div class="bs-top"><div class="bs-title">⚔ Бой</div><div class="bs-round" id="bs-round">Раунд 0</div>' +
         '<button class="bs-x" onclick="bsClose()">✕</button></div>' +
         '<div class="bs-arena">' +
-          '<div class="bs-fighter player"><div class="bs-nm">Ты — сила ' + my + '</div><div class="bs-ava">' + ava + '</div>' +
+          '<div class="bs-bg" style="background-image:url(\'' + locImg + '\')"></div>' +
+          '<div class="bs-fighter player"><div class="bs-nm">Ты — сила ' + my + '</div>' + (avaIsImg ? '<img src="' + ava + '" alt="герой">' : '<div class="bs-ava">' + ava + '</div>') +
           '<div class="bs-hpbar"><div id="bs-php" style="background:#43c463;width:100%"></div></div><div class="bs-hpn" id="bs-phpn">1/1</div></div>' +
           '<div class="bs-vs">VS</div>' +
           '<div class="bs-fighter mst"><div class="bs-nm">Монстр — сила ' + mp + '</div>' +
@@ -4862,7 +4866,7 @@ function initHero3D() {
 
     init();
       // ===================== ЭКСПОРТ/ИМПОРТ СЕЙВА + АВТООБНОВЛЕНИЕ =====================
-    var APP_VERSION = '2.3.0';
+    var APP_VERSION = '2.3.1';
     function cmpVer(a,b){ var A=String(a).split('.'),B=String(b).split('.'); for(var i=0;i<3;i++){ var x=parseInt(A[i]||0,10),y=parseInt(B[i]||0,10); if(x>y)return 1; if(x<y)return -1; } return 0; }
     function dismissUpdate(){ try{ localStorage.setItem('np_upd_dismissed', window.__npRemoteVer || APP_VERSION); }catch(e){} location.reload(); }
     function strHash(s) { var h = 5381; s = String(s); for (var i = 0; i < s.length; i++) { h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; } return h.toString(36); }
@@ -4982,6 +4986,11 @@ function initHero3D() {
 .bs-round{color:#8a93a6;font-size:13px}
 .bs-x{background:none;border:none;color:#8a93a6;font-size:22px;cursor:pointer;padding:4px 8px}
 .bs-arena{flex:1;display:flex;align-items:flex-end;justify-content:space-between;padding:8px 14px 0;min-height:0;overflow:hidden;position:relative}
+.bs-bg{position:absolute;inset:0;background-size:cover;background-position:center 35%;opacity:.92}
+.bs-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,9,20,.6) 0%,rgba(10,9,20,.2) 42%,rgba(10,9,20,.78) 100%)}
+.bs-fighter{position:relative;z-index:2}
+.bs-vs{z-index:3}
+.bs-mid{position:relative;z-index:2}
 .bs-fighter{display:flex;flex-direction:column;align-items:center;gap:6px;max-width:44%;animation:bsIdle 2.6s ease-in-out infinite}
 .bs-fighter.mst{animation-delay:1.3s}
 @keyframes bsIdle{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
