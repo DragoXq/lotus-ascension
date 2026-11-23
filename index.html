@@ -253,11 +253,7 @@
     .gmember-role { font-size:0.68rem; padding:2px 8px; border-radius:999px; border:1px solid rgba(240,193,75,0.45); color:var(--gold); flex:none; }
     .gmember-role.m { border-color:#2b3a52; color:#9fb3d1; }
     .gmember-contrib { margin-left:auto; font-size:0.8rem; color:#cfe0f5; flex:none; }
-    .exp-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
-    .exp-actions .btn { font-size:0.85rem; padding:10px 8px; white-space:nowrap; }
-    .exp-actions .btn:last-child { grid-column:1 / -1; }
     @media (max-width:640px) {
-      .exp-actions .btn { font-size:0.78rem; padding:9px 4px; }
       .guild-shell { flex-direction:column; }
       .guild-nav { flex:none; width:100%; }
       .gnav-item { padding:9px 12px; }
@@ -802,6 +798,9 @@
     @keyframes expPop { from { transform: scale(0); } to { transform: scale(1); } }
     .exp-scene { overflow: hidden; }
     .exp-hud-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px 6px; }
+    .eb-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+    .eb-actions .btn { flex: 1 1 42%; min-width: 42%; padding: 11px 8px; font-size: 0.95rem; }
+    .eb-actions .btn-wide { flex: 1 1 100%; min-width: 100%; }
     .exp-hud-top, .exp-hud-left, .exp-hud-right { position: static; transform: none; z-index: 7; background: rgba(10,10,20,0.85); border-radius: 12px; padding: 5px 16px; white-space: nowrap; display: flex; align-items: center; gap: 8px; }
     .exp-hud-top { border: 1px solid rgba(240,193,75,0.55); font-size: 13px; font-weight: 700; color: var(--gold); }
     .exp-hud-left { border: 1px solid rgba(229,72,90,0.65); pointer-events: auto; }
@@ -969,7 +968,16 @@
     .gm-in { flex: 1; background: #0b0b12; border: 1px solid var(--border); color: var(--text);
       border-radius: 10px; padding: 10px 12px; font-family: 'Courier New', monospace; font-size: 13px; outline: none; }
     .gm-in:focus { border-color: var(--gold); }
-    </style>
+        @media (max-width:640px){
+      .exp-hud-row { flex-wrap: wrap; justify-content: center; row-gap: 6px; }
+      .exp-hud-top, .exp-hud-left, .exp-hud-right { white-space: normal; text-align: center; padding: 5px 12px; font-size: 12px; }
+      .exp-battle-ov { overflow: auto; }
+      .exp-battle-card { width: min(94%, 420px) !important; max-height: 88%; overflow: auto; }
+      .exp-battle-row { flex-direction: column; gap: 8px; }
+      .exp-battle-side { text-align: left !important; }
+      .eb-actions .btn { flex: 1 1 46%; min-width: 46%; }
+    }
+</style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/png" href="favicon-32.png">
@@ -3401,7 +3409,13 @@ function selectGender(g) {
       expInitHud(); expUpdateHud();
       document.getElementById('exp-modal').classList.remove('hidden');
     }
-    function closeExplore(){ document.getElementById('exp-modal').classList.add('hidden'); }
+    function closeExplore(){
+      try {
+        if (EXP.battleTimer) { if (EXP.battleTimer.timer) clearInterval(EXP.battleTimer.timer); EXP.battleTimer = null; }
+        const bo = document.getElementById('exp-battle-ov');
+        if (bo) bo.remove();
+        expBtnRestore();
+      } catch (e) {} document.getElementById('exp-modal').classList.add('hidden'); }
     function expUnlocked(){ return LOCATIONS.filter(l => ensureStory().unlockedLocations.includes(l.id)); }
     function renderExplore(){
       const st = ensureStory();
@@ -3507,7 +3521,9 @@ function selectGender(g) {
     function expUpdateHud(){
       ensureFood();
       const st = ensureStory();
-      const pct = Math.min(100, (st.expPct && st.expPct[st.locationId]) || 0);
+      const curChHud = getCurrentChapter();
+      const sExpPctHud = (st.expPct && st.expPct[st.locationId]) || 0;
+      const pct = Math.min(100, Math.max(sExpPctHud, Math.floor((st.step / curChHud.steps.length) * 100)));
       const t = document.getElementById('exp-hud-top');
       if (t) t.textContent = 'Исследование ' + pct + '%';
       const l = document.getElementById('exp-hud-left');
@@ -3564,19 +3580,6 @@ function selectGender(g) {
       addLog('Съел пайек: +' + healed + ' жизни', 'win');
       updateUI(); expUpdateHud(); updateFoodUI(); save();
     }
-    function drinkPotion(){
-      ensureFood();
-      if ((state.potions || 0) <= 0) { showToast('🧪 Зелий нет — купи в магазине 🏪 или побеждай монстров'); return; }
-      const mx = Math.max(1, Math.floor(state.maxPlayerHp || 100));
-      const before = Math.max(0, Math.floor(state.playerHp || 0));
-      if (before >= mx) { showToast('Жизнь уже полная'); return; }
-      state.potions -= 1;
-      state.playerHp = Math.min(mx, before + Math.floor(mx * 0.4));
-      const healed = Math.max(0, Math.floor(state.playerHp) - before);
-      showToast('🧪 Зелье выпито: +' + healed + ' жизни');
-      addLog('Выпил зелье жизни: +' + healed + ' жизни', 'win');
-      updateUI(); expUpdateHud(); updateFoodUI(); save();
-    }
     function renderShop(){
       var g = document.getElementById('shop-gold');
       if (g) g.innerHTML = '🪙 Золото: <b>' + (state.gold || 0) + '</b>';
@@ -3585,7 +3588,7 @@ function selectGender(g) {
       var items = [
         { k:'ration', ico:'🍖', name:'Пайка', price:30, desc:'Восстанавливает 1 ед. здоровья — забери в инвентаре' },
         { k:'pick',   ico:'🗝', name:'Отмычка от цепей', price:120, desc:'Мгновенно снимает отдых после поражения' },
-        { k:'potion', ico:'🧪', name:'Зелье жизни', price:60, desc:'+25 здоровья сразу' }
+        { k:'potion', ico:'🧪', name:'Зелье жизни', price:60, desc:'Лечит 40% HP в бою — расходник' }
       ];
       var html = '';
       for (var i = 0; i < items.length; i++) {
@@ -3615,8 +3618,8 @@ function selectGender(g) {
         if (gold < 60) { showToast('🪙 Не хватает золота — нужно 60'); return; }
         state.gold = gold - 60;
         state.potions = (state.potions || 0) + 1;
-        showToast('🧪 Зелье куплено — ждёт в инвентаре и в бою');
-        addLog('Купил зелье жизни (в инвентаре)', 'win');
+        showToast('🧪 Зелье жизни куплено — ждёт в инвентаре');
+        addLog('Купил зелье жизни: лечит 40% HP в бою', 'win');
       }
       updateUI(); expUpdateHud(); updateFoodUI(); updateRestUI(); renderShop(); save();
     }
@@ -3638,12 +3641,22 @@ function selectGender(g) {
         + '<div style="font-size:1.7rem">🧪</div>'
         + '<div style="flex:1;min-width:0">'
         + '<div style="font-weight:700;color:var(--text)">Зелья жизни <span style="font-weight:800;color:var(--gold,#f5b942)">' + p + '</span></div>'
-        + '<div style="font-size:0.8rem;color:var(--text)">Восстанавливает 40% здоровья</div>'
-        + '<div style="font-size:0.74rem;font-style:italic;color:#c9a24a;opacity:.85">«Капля нектара — и раны уходят, как туман»</div>'
+        + '<div style="font-size:0.8rem;color:var(--text)">Лечит 40% макс. здоровья — в бою и из инвентаря</div>'
+        + '<div style="font-size:0.74rem;font-style:italic;color:#c9a24a;opacity:.85">«Капля небесной росы затягивает раны»</div>'
         + '</div>'
         + '<button class="btn btn-primary" style="width:auto;flex:0 0 auto;padding:6px 14px;font-size:0.75rem;white-space:nowrap;' + (p <= 0 ? 'opacity:.5;pointer-events:none;' : '') + '" onclick="drinkPotion(); renderInv();">Выпить</button>'
         + '</div>';
       box.innerHTML = row + prow;
+    }
+    function drinkPotion(){
+      var p = state.potions || 0;
+      if (p <= 0) { showToast('🧪 Зелий нет — купи в магазине 🏪'); return; }
+      state.potions = p - 1;
+      var mx = Math.max(1, Math.floor(state.maxPlayerHp || 100));
+      var before = Math.max(0, Math.floor(state.playerHp || 0));
+      state.playerHp = Math.min(mx, before + Math.floor(mx * 0.4));
+      showToast('🧪 Зелье выпито: +' + (Math.floor(state.playerHp) - before) + ' здоровья');
+      expUpdateHud(); updateUI(); save();
     }
     function updateFoodUI(){
       const el = document.getElementById('food-count');
@@ -3659,66 +3672,96 @@ function selectGender(g) {
       if (phn) phn.textContent = hp + '/' + mx;
       if (mhn) mhn.textContent = Math.max(0, b.mHp) + '/' + b.mHpMax;
     }
-    function expAttackRound(kind){
+    function expBtnRestore(){
+      const xb = document.getElementById('exp-btn');
+      if (xb) xb.style.display = '';
+    }
+    function expCritRoll(){ return Math.random() < 0.15; }
+    function expPlayerDmg(b, mul){
+      const ratio = b.my / (b.my + b.mp * 1.15);
+      return Math.max(3, Math.floor(b.mHpMax * (0.16 + Math.random() * 0.08) * (0.8 + 0.5 * ratio)) * (mul || 1));
+    }
+    function expMonsterDmg(b){
+      const ratio = b.mp / (b.mp + b.my * 1.1);
+      return Math.max(2, Math.floor(b.pHpMax * (0.055 + Math.random() * 0.045) * (0.8 + 0.5 * ratio)));
+    }
+    function expLog(b, txt){
+      const log = document.getElementById('eb-log');
+      if (log) log.textContent = 'Раунд ' + b.round + ': ' + txt;
+    }
+    function expMonsterTurn(b, passMul){
+      let md = expMonsterDmg(b);
+      const crit = expCritRoll();
+      if (crit) md = Math.floor(md * 2);
+      md = Math.max(1, Math.floor(md * (passMul == null ? 1 : passMul)));
+      state.playerHp = Math.max(0, (state.playerHp || 0) - md);
+      return { md: md, crit: crit };
+    }
+    function expCheckEnd(b, el){
+      if (b.mHp <= 0 || (state.playerHp || 0) <= 0) {
+        b.done = true;
+        expEndBattle(b.mHp <= 0 ? 'win' : 'lose', el, b, b.mp, b.my);
+        return true;
+      }
+      return false;
+    }
+    function expAltAction(kind){
       const b = EXP.battleTimer;
       if (!b || b.done) return;
-      kind = kind || 'atk';
-      const log = document.getElementById('eb-log');
-      if (kind === 'pot' && (state.potions || 0) <= 0) {
-        if (log) log.textContent = '🧪 Зелий нет — купи в магазине 🏪 или побеждай монстров';
+      const el = b.el;
+      if (kind === 'run') {
+        if (Math.random() < 0.5) { expEndBattle('skip', el, b, b.mp, b.my); return; }
+        b.round++;
+        const t = expMonsterTurn(b, 1);
+        expLog(b, 'побег не удался — монстр бьёт бесплатно на ' + t.md + (t.crit ? ' (КРИТ!)' : ''));
+        expBattleUpdate(b); expUpdateHud(); updateUI(); save();
+        expCheckEnd(b, el);
+        return;
+      }
+      if (kind === 'pot') {
+        if ((state.potions || 0) <= 0) { showToast('🧪 Зелий нет — купи в магазине 🏪 или роняй с монстров'); return; }
+        state.potions--;
+        b.round++;
+        const mxP = Math.max(1, b.pHpMax);
+        const beforeP = Math.max(0, Math.floor(state.playerHp || 0));
+        state.playerHp = Math.min(mxP, beforeP + Math.floor(mxP * 0.4));
+        const healedP = Math.floor(state.playerHp) - beforeP;
+        const tP = expMonsterTurn(b, 1);
+        expLog(b, '🧪 зелье: +' + healedP + ' жизни; монстр бьёт на ' + tP.md + (tP.crit ? ' (КРИТ!)' : ''));
+        expBattleUpdate(b); updateFoodUI(); expUpdateHud(); updateUI(); save();
+        expCheckEnd(b, el);
+        return;
+      }
+      if (kind === 'def') {
+        b.round++;
+        const tD = expMonsterTurn(b, 0.3);
+        const mxD = Math.max(1, b.pHpMax);
+        const beforeD = Math.max(0, Math.floor(state.playerHp || 0));
+        state.playerHp = Math.min(mxD, beforeD + Math.max(3, Math.floor(mxD * 0.08)));
+        const healedD = Math.floor(state.playerHp) - beforeD;
+        expLog(b, '🛡 защита: пропущено ' + tD.md + (tD.crit ? ' (КРИТ!)' : '') + '; медитация: +' + healedD + ' жизни');
+        expBattleUpdate(b); expUpdateHud(); updateUI(); save();
+        expCheckEnd(b, el);
+        return;
+      }
+      const heavy = kind === 'heaven';
+      if (heavy && Math.random() < 0.3) {
+        b.round++;
+        const tM = expMonsterTurn(b, 1);
+        expLog(b, '💥 Сила небес промахнулась! Монстр бьёт на ' + tM.md + (tM.crit ? ' (КРИТ!)' : ''));
+        expBattleUpdate(b); expUpdateHud(); updateUI(); save();
+        expCheckEnd(b, el);
         return;
       }
       b.round++;
-      b.def = false;
-      var parts = [];
-
-      if (kind === 'run') {
-        if (Math.random() < 0.5) { b.done = true; expEndBattle('skip', b.el, b, b.mp, b.my); return; }
-        parts.push('🏃 Побег не удался!');
-      } else if (kind === 'pot') {
-        state.potions = (state.potions || 0) - 1;
-        const mx = Math.max(1, Math.floor(state.maxPlayerHp || 100));
-        const before = Math.max(0, Math.floor(state.playerHp || 0));
-        state.playerHp = Math.min(mx, before + Math.floor(mx * 0.4));
-        parts.push('🧪 Зелье: +' + (Math.floor(state.playerHp) - before) + ' жизни');
-      } else {
-        var mult = 1, miss = false;
-        if (kind === 'hv') { mult = 2; if (Math.random() < 0.3) miss = true; }
-        if (miss) parts.push('💥 Сила небес промахнулась!');
-        else {
-          var pd = Math.max(1, Math.floor(b.my * (0.07 + Math.random() * 0.06) * mult));
-          var crit = Math.random() < 0.15;
-          if (crit) pd *= 2;
-          b.mHp -= pd;
-          parts.push((kind === 'hv' ? '💥 Сила небес: -' : '⚔ Ты: -') + pd + (crit ? ' КРИТ!' : ''));
-        }
-      }
-
-      if (kind === 'def') b.def = true;
-
-      if (b.mHp > 0) {
-        var md = Math.max(1, Math.floor(b.mp * (0.07 + Math.random() * 0.06)));
-        var mCrit = Math.random() < 0.15;
-        if (mCrit) md *= 2;
-        if (b.def) md = Math.max(0, Math.floor(md * 0.3));
-        state.playerHp = Math.max(0, (state.playerHp || 0) - md);
-        parts.push('Монстр: -' + md + (mCrit ? ' КРИТ!' : ''));
-        if (b.def) {
-          const mx2 = Math.max(1, Math.floor(state.maxPlayerHp || 100));
-          const before2 = Math.max(0, Math.floor(state.playerHp || 0));
-          state.playerHp = Math.min(mx2, before2 + Math.floor(mx2 * 0.05));
-          parts.push('🛡 Медитация: +' + (Math.floor(state.playerHp) - before2) + ' жизни');
-        }
-      }
-
-      if (log) log.textContent = 'Раунд ' + b.round + ': ' + parts.join('; ');
-      expBattleUpdate(b);
-      expUpdateHud(); updateUI(); save();
-      if (b.mHp <= 0 || state.playerHp <= 0) {
-        b.done = true;
-        expEndBattle(b.mHp <= 0 ? 'win' : 'lose', b.el, b, b.mp, b.my);
-      }
-      b.def = false;
+      let pd = expPlayerDmg(b, heavy ? 2.2 : 1);
+      const pcrit = expCritRoll();
+      if (pcrit) pd = Math.floor(pd * 2);
+      b.mHp -= pd;
+      const tA = expMonsterTurn(b, 1);
+      expLog(b, (heavy ? '💥 сила небес: ' : '⚔ ты: ') + '-' + pd + (pcrit ? ' (КРИТ!)' : '') + '; монстр: -' + tA.md + (tA.crit ? ' (КРИТ!)' : ''));
+      expBattleUpdate(b); expUpdateHud(); updateUI(); save();
+      expCheckEnd(b, el);
     }
     function expAutoBattle(el){
       if (document.getElementById('exp-battle-ov')) return;
@@ -3741,19 +3784,22 @@ function selectGender(g) {
         '<div class="exp-battle-side" style="text-align:right"><div class="exp-hud-lbl">Монстр — сила ' + mp + '</div>' +
         '<div class="exp-battle-hp"><div id="eb-mhp" style="background:#e5485a;width:100%"></div></div>' +
         '<div class="exp-hud-lbl" id="eb-mhpn">' + mHpMax + '/' + mHpMax + '</div></div></div>' +
-        '<div style="text-align:center;color:#8a93a6;min-height:38px;font-size:13px" id="eb-log">Выбери действие — бой по раундам</div>' +
-        '<div class="exp-actions">' +
-        '<button class="btn btn-primary" onclick="expAttackRound(\'atk\')">⚔ Атака</button>' +
-        '<button class="btn btn-primary" onclick="expAttackRound(\'hv\')">💥 Сила небес</button>' +
-        '<button class="btn btn-secondary" onclick="expAttackRound(\'def\')">🛡 Защита</button>' +
-        '<button class="btn btn-secondary" onclick="expAttackRound(\'pot\')">🧪 Зелье</button>' +
-        '<button class="btn btn-secondary" onclick="expAttackRound(\'run\')">🏃 Сбежать</button></div></div>';
+        '<div style="text-align:center;color:#8a93a6;min-height:38px;font-size:13px" id="eb-log">Выбери действие, культиватор</div>' +
+        '<div class="exp-actions eb-actions">' +
+        '<button class="btn btn-primary" onclick="expAltAction(\'atk\')">⚔ Атака</button>' +
+        '<button class="btn btn-primary" onclick="expAltAction(\'heaven\')">💥 Сила небес</button>' +
+        '<button class="btn btn-secondary" onclick="expAltAction(\'def\')">🛡 Защита</button>' +
+        '<button class="btn btn-secondary" onclick="expAltAction(\'pot\')">🧪 Зелье</button>' +
+        '<button class="btn btn-secondary btn-wide" onclick="expEndBattle(\'skip\')">🏃 Сбежать</button></div></div>';
       sc.appendChild(ov);
+      const xb = document.getElementById('exp-btn');
+      if (xb) xb.style.display = 'none';
       expBattleUpdate(b);
     }
     function expEndBattle(res, el, b, mp, my){
       const ov = document.getElementById('exp-battle-ov');
       if (EXP.battleTimer && EXP.battleTimer.timer) { clearInterval(EXP.battleTimer.timer); EXP.battleTimer.timer = null; }
+      expBtnRestore();
       if (res === 'skip') {
         if (ov) ov.remove();
         if (el) el.dataset.fighting = '';
@@ -3780,18 +3826,17 @@ function selectGender(g) {
         loot.innerHTML = '<img src="' + CHEST_IMG + '" style="height:56px;width:auto;display:block;margin-bottom:36px" alt="сундук добычи">';
         loot.onclick = function(){ expOpenLootChest(loot); };
         document.getElementById('exp-items').appendChild(loot);
-        var rw = [
+        expResultWindow(true, [
           ['Опыт', '+' + exp],
           ['Алмазы', '+' + big],
           ['Золото', '+' + gold],
           ['Эссенция', '+' + essence],
           ['Кристаллы в сундуке', '+' + stones],
-          ['🍖 Паёк', '+1 (кушать в инвентаре)']
-        ];
-        var potDrop = Math.random() < 0.35;
-        if (potDrop) { state.potions = (state.potions || 0) + 1; rw.push(['🧪 Зелье жизни', '+1 — выпей в бою или в инвентаре']); }
-        expResultWindow(true, rw);
+          ['🍖 Паёк', '+1 (кушать в инвентаре)'].concat(potDrop ? [['🧪 Зелье жизни', '+1 (в инвентаре)']] : [])
+        ]);
         state.food = (state.food || 0) + 1;
+        const potDrop = Math.random() < 0.35;
+        if (potDrop) state.potions = (state.potions || 0) + 1;
         addLog('Победил монстра: сундук добычи впереди, +1 паёк' + (potDrop ? ', +1 зелье' : ''), 'win');
       } else {
         if (el) el.dataset.fighting = '';
@@ -4791,7 +4836,7 @@ function initHero3D() {
 
     init();
       // ===================== ЭКСПОРТ/ИМПОРТ СЕЙВА + АВТООБНОВЛЕНИЕ =====================
-    var APP_VERSION = '2.0.0';
+    var APP_VERSION = '2.1.0';
     function cmpVer(a,b){ var A=String(a).split('.'),B=String(b).split('.'); for(var i=0;i<3;i++){ var x=parseInt(A[i]||0,10),y=parseInt(B[i]||0,10); if(x>y)return 1; if(x<y)return -1; } return 0; }
     function dismissUpdate(){ try{ localStorage.setItem('np_upd_dismissed', window.__npRemoteVer || APP_VERSION); }catch(e){} location.reload(); }
     function strHash(s) { var h = 5381; s = String(s); for (var i = 0; i < s.length; i++) { h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; } return h.toString(36); }
