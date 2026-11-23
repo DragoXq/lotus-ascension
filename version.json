@@ -1,3 +1,6 @@
 {
-  "version": "1.7.0"
+  "name": "Lotus Ascension",
+  "version": "1.7.0",
+  "url": "https://dragoxq.github.io/lotus-ascension/",
+  "changelog": "Окно входа: почта или ник + пароль"
 }

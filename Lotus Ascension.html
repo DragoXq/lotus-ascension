@@ -4833,6 +4833,7 @@ function initHero3D() {
       <div class="lg-mono">🪷</div>
       <div class="lg-title" id="lg-title">Войдите</div>
       <div class="lg-sub" id="lg-sub">Врата ждут своего культиватора</div>
+      <input class="lg-input" id="lg-id" type="text" placeholder="Почта или ник" autocomplete="off">
       <input class="lg-input" id="lg-pass" type="password" placeholder="Введите пароль" autocomplete="off">
       <div class="lg-err" id="lg-err">Неверный пароль. Попробуй снова</div>
       <button class="btn btn-primary lg-btn" id="lg-btn" onclick="gateLogin()">Войти</button>
@@ -4843,14 +4844,34 @@ function initHero3D() {
   <script>
     function gateLogin(){
       var p = document.getElementById('lg-pass'), err = document.getElementById('lg-err'), g = document.getElementById('login-gate');
+      var idEl = document.getElementById('lg-id');
+      var who = idEl ? String(idEl.value || '').trim().toLowerCase() : '';
       var v = p ? String(p.value) : '';
+      var L = (state.lang === 'en');
+      var okWho = false;
+      var cand = [];
+      try { if (state.name) cand.push(String(state.name).trim().toLowerCase()); } catch(e) {}
+      try { if (state.email) cand.push(String(state.email).trim().toLowerCase()); } catch(e) {}
+      try { if (state.playerId) cand.push(String(state.playerId).trim().toLowerCase()); } catch(e) {}
+      if (!who) { okWho = true; }
+      else if (cand.indexOf(who) !== -1) { okWho = true; }
+      if (!okWho) {
+        if (err) { err.textContent = L ? 'No such hero. Check the name or email' : 'Такого героя нет. Проверь имя или почту'; err.style.display = 'block'; }
+        if (idEl) idEl.value = '';
+        return;
+      }
       if (state.passHash) {
         var h; try { h = btoa(unescape(encodeURIComponent(v))); } catch(e) { h = ''; }
-        if (h !== state.passHash) { if (err) err.style.display = 'block'; if (p) p.value = ''; return; }
+        if (h !== state.passHash) {
+          if (err) { err.textContent = L ? 'Wrong password. Try again' : 'Неверный пароль. Попробуй снова'; err.style.display = 'block'; }
+          if (p) p.value = '';
+          return;
+        }
       }
       try { localStorage.removeItem('np_logged_out'); } catch(e) {}
-      if (err) err.style.display = 'none';
+      if (err) { err.style.display = 'none'; err.textContent = 'Неверный пароль. Попробуй снова'; }
       if (p) p.value = '';
+      if (idEl) idEl.value = '';
       g.style.display = 'none';
       showToast((T('gateWelcome') || 'С возвращением, ') + (state.name || ''));
     }
@@ -4874,12 +4895,19 @@ function initHero3D() {
           btn = document.getElementById('lg-btn'), nb = document.getElementById('lg-new');
       if (t) t.textContent = L ? 'Sign in' : 'Войдите';
       if (sub) sub.textContent = L ? 'The gates await their cultivator' : 'Врата ждут своего культиватора';
+      var idEl = document.getElementById('lg-id');
+      if (idEl) idEl.placeholder = L ? 'Email or nickname' : 'Почта или ник';
       if (p) { p.placeholder = L ? 'Enter password' : 'Введите пароль'; if (!state.passHash) p.placeholder = L ? 'No password set — just enter' : 'Пароль не задан — просто войдите'; }
       if (err) err.textContent = L ? 'Wrong password. Try again' : 'Неверный пароль. Попробуй снова';
       if (btn) btn.textContent = L ? 'Sign in' : 'Войти';
       if (nb) nb.textContent = L ? 'Create new hero' : 'Создать нового героя';
-      setTimeout(function(){ g.style.display = 'flex'; if (p && state.passHash) { try { p.focus(); } catch(e) {} } }, 2900);
+      setTimeout(function(){ g.style.display = 'flex'; var f = idEl || p; if (f) { try { f.focus(); } catch(e) {} } }, 2900);
     }
+    (function(){
+      var idEl = document.getElementById('lg-id'), p = document.getElementById('lg-pass');
+      if (idEl) idEl.addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); if (p) p.focus(); } });
+      if (p) p.addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); gateLogin(); } });
+    })();
     initLoginGate();
   </script>
 </body>
