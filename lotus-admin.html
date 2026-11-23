@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Lotus Ascension — Админ-панель</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b27; --panel2: #1c2333; --line: #2a3348;
+    --gold: #e8b64c; --gold2: #f5cf7a; --txt: #dfe6f2; --dim: #8a94ab;
+    --green: #58c98a; --red: #e06c75; --cyan: #56b6c2; --violet: #b48ead;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--txt);
+    font-family: -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+    min-height: 100vh; padding: 14px;
+  }
+  h1 { text-align: center; color: var(--gold); font-size: 1.25rem; margin-bottom: 4px; letter-spacing: 1px; }
+  .sub { text-align: center; color: var(--dim); font-size: .8rem; margin-bottom: 12px; }
+  .tabs { display: flex; gap: 6px; max-width: 860px; margin: 0 auto 12px; }
+  .tabs button {
+    flex: 1; padding: 10px 4px; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--panel); color: var(--txt); font-size: .9rem; cursor: pointer;
+  }
+  .tabs button.active { background: var(--panel2); border-color: var(--gold); color: var(--gold); font-weight: 600; }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+  .warn { background: #2b1e12; border: 1px solid #7a5a20; color: var(--gold2); border-radius: 10px; padding: 10px 12px; font-size: .8rem; margin-bottom: 12px; line-height: 1.5; }
+  .screen-view { display: none; }
+  .screen-view.active { display: block; }
+
+  /* Терминал */
+  .term { background: #05080d; border: 1px solid #1f4d3a; border-radius: 10px; padding: 10px; font-family: monospace; }
+  .term-out { max-height: 44vh; overflow-y: auto; font-size: .82rem; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+  .term-line { margin-bottom: 2px; }
+  .t-in { color: var(--gold2); } .t-ok { color: var(--green); } .t-err { color: var(--red); }
+  .t-sys { color: var(--dim); } .t-cmd { color: var(--cyan); } .t-warn { color: #e8b64c; }
+  .term-in { display: flex; gap: 8px; margin-top: 8px; }
+  .term-in input {
+    flex: 1; background: #0a1410; border: 1px solid #1f4d3a; border-radius: 8px;
+    color: #7ee7b0; font-family: monospace; font-size: .88rem; padding: 9px 12px; outline: none;
+  }
+  .term-in input:focus { border-color: #2f8f68; }
+  .term-in button {
+    background: #123d2c; color: #7ee7b0; border: 1px solid #1f4d3a; border-radius: 8px;
+    width: 46px; font-size: 1rem; cursor: pointer;
+  }
+  .cmd-hint { font-size: .74rem; color: var(--dim); margin-top: 8px; line-height: 1.6; }
+  .cmd-hint b { color: var(--cyan); font-weight: 600; }
+
+  /* Журнал */
+  .log-entry { background: var(--panel2); border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; font-size: .84rem; line-height: 1.5; }
+  .log-entry .lt { color: var(--dim); font-family: monospace; font-size: .78rem; margin-right: 8px; }
+  .log-entry.win { border-left: 3px solid var(--green); }
+  .log-entry.info { border-left: 3px solid var(--cyan); }
+  .log-entry.loss, .log-entry.err { border-left: 3px solid var(--red); }
+  .btn {
+    display: block; width: 100%; padding: 11px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--panel2); color: var(--txt); font-size: .9rem; cursor: pointer; text-align: center;
+  }
+  .btn:active { transform: scale(.98); }
+  .btn-gold { background: linear-gradient(135deg, #b8862e, #8a5f1a); border-color: #a9792b; color: #fff; font-weight: 600; }
+  .btn-red { background: #4a1f23; border-color: #7a2f36; color: #ffb3ba; }
+  .btn + .btn { margin-top: 8px; }
+
+  /* База данных */
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+  .stat { background: var(--panel2); border-radius: 8px; padding: 8px 10px; font-size: .8rem; }
+  .stat b { color: var(--gold2); }
+  .stat .k { color: var(--dim); font-size: .72rem; }
+  .db-area {
+    width: 100%; min-height: 46vh; background: #05080d; border: 1px solid var(--line); border-radius: 10px;
+    color: #9ecbff; font-family: monospace; font-size: .78rem; padding: 10px; outline: none; resize: vertical; line-height: 1.5;
+  }
+  .db-area:focus { border-color: var(--gold); }
+  .row2 { display: flex; gap: 8px; } .row2 .btn { flex: 1; }
+  .db-msg { font-size: .8rem; margin-top: 8px; min-height: 1.2em; }
+  .ok { color: var(--green); } .bad { color: var(--red); }
+  .empty { text-align: center; color: var(--dim); padding: 30px 10px; font-size: .9rem; line-height: 1.7; }
+</style>
+</head>
+<body>
+  <h1>🪷 Lotus Ascension — Админ-панель</h1>
+  <div class="sub">терминал · журнал · база данных</div>
+
+  <div class="wrap">
+    <div class="warn">
+      ⚠ Связь работает, когда оба файла открыты в <b>одном браузере</b> (можно из одной папки или двумя вкладками).
+      Во время правок <b>закрой вкладку игры</b> — она перезаписывает сейв при каждом действии и затрёт твои изменения. После правок открой игру заново (Ctrl+F5).
+    </div>
+
+    <div class="tabs">
+      <button id="tb-term" class="active" onclick="go('term')">⌨ Терминал</button>
+      <button id="tb-log" onclick="go('log')">📜 Журнал</button>
+      <button id="tb-db" onclick="go('db')">🗄 База данных</button>
+    </div>
+
+    <!-- ТЕРМИНАЛ -->
+    <div id="view-term" class="screen-view active">
+      <div class="card">
+        <div class="term">
+          <div class="term-out" id="term-out"></div>
+          <div class="term-in">
+            <input id="term-input" type="text" placeholder="/help — список команд" autocomplete="off" />
+            <button onclick="termRun()">▶</button>
+          </div>
+        </div>
+        <div class="cmd-hint">
+          <b>/help</b> — команды · <b>/read</b> — краткая сводка · <b>/gold N</b>, <b>/gems N</b>, <b>/ess N</b>, <b>/exp N</b>, <b>/power N</b> — добавить ресурс ·
+          <b>/lvl N</b> — поставить уровень · <b>/hp N</b> — здоровье · <b>/maxhp N</b> — макс. здоровье ·
+          <b>/food N</b> — пайки · <b>/rest off</b> — снять цепи отдыха · <b>/log clear</b> — очистить журнал
+        </div>
+      </div>
+    </div>
+
+    <!-- ЖУРНАЛ -->
+    <div id="view-log" class="screen-view">
+      <div class="card" id="log-card"></div>
+      <button class="btn btn-gold" onclick="renderLogView()">🔄 Обновить журнал</button>
+    </div>
+
+    <!-- БАЗА ДАННЫХ -->
+    <div id="view-db" class="screen-view">
+      <div class="card">
+        <div class="stats" id="db-stats"></div>
+        <textarea id="db-area" class="db-area" spellcheck="false"></textarea>
+        <div class="db-msg" id="db-msg"></div>
+      </div>
+      <div class="row2">
+        <button class="btn" onclick="dbReload()">📖 Перечитать из сейва</button>
+        <button class="btn btn-gold" onclick="dbSave()">💾 Сохранить в сейв</button>
+      </div>
+      
+    </div>
+  </div>
+
+<script>
+const SAVE_KEY = 'nebesnyy_put_save_v2';
+const $ = id => document.getElementById(id);
+
+function getSave() {
+  try { const raw = localStorage.getItem(SAVE_KEY); return raw ? JSON.parse(raw) : null; }
+  catch (e) { return null; }
+}
+function writeSave(data) {
+  localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+}
+function stat(v, k) { return v === undefined || v === null ? '—' : v; }
+
+/* ---------- навигация ---------- */
+function go(v) {
+  ['term','log','db'].forEach(k => {
+    $('view-'+k).classList.toggle('active', k === v);
+    $('tb-'+k).classList.toggle('active', k === v);
+  });
+  if (v === 'log') renderLogView();
+  if (v === 'db') dbReload();
+  if (v === 'term') $('term-input').focus();
+}
+
+/* ---------- терминал ---------- */
+function tprint(text, cls) {
+  const el = document.createElement('div');
+  el.className = 'term-line ' + (cls || 't-sys');
+  el.textContent = text;
+  $('term-out').appendChild(el);
+  $('term-out').scrollTop = 999999;
+}
+
+const HELP = [
+  ['/help', 'этот список'],
+  ['/read', 'краткая сводка героя'],
+  ['/gold N', '+N золота 🪙'],
+  ['/gems N', '+N алмазов 💎'],
+  ['/ess N', '+N эссенции ✨'],
+  ['/exp N', '+N опыта'],
+  ['/lvl N', 'поставить уровень N'],
+  ['/power N', '+N силы'],
+  ['/hp N', 'здоровье = N'],
+  ['/maxhp N', 'макс. здоровье = N'],
+  ['/food N', '+N паёк 🥫'],
+  ['/rest off', 'снять цепи отдыха'],
+  ['/log clear', 'очистить журнал игры'],
+  ];
+
+function termRun() {
+  const inp = $('term-input');
+  const raw = inp.value.trim();
+  if (!raw) return;
+  inp.value = '';
+  tprint('> ' + raw, 't-in');
+  const parts = raw.split(/\s+/);
+  const cmd = (parts[0] || '').toLowerCase();
+  const arg = parseFloat(parts[1]);
+
+  if (cmd === '/help') {
+    HELP.forEach(([c, d]) => tprint('  ' + c.padEnd(16) + d, 't-cmd'));
+    return;
+  }
+  if (cmd === '/read') {
+    const s = getSave();
+    if (!s) return tprint('Сейв не найден. Открой игру хотя бы раз в этом браузере.', 't-err');
+    tprint('Персонаж: ' + (s.heroName || '—') + '  ·  уровень ' + stat(s.level) + '  ·  реалм ' + stat(s.realmIndex), 't-ok');
+    tprint('Сила ' + stat(s.power) + '  ·  HP ' + stat(s.playerHp) + '/' + stat(s.maxPlayerHp) + '  ·  опыт ' + stat(s.exp) + '/' + stat(s.expToNext), 't-ok');
+    tprint('🪙 ' + stat(s.gold) + '  ·  💎 ' + stat(s.stones) + '  ·  ✨ ' + stat(s.essence) + '  ·  🥫 ' + stat(s.food), 't-ok');
+    tprint('Глава ' + (s.story && s.story.chapter !== undefined ? s.story.chapter : '—') + '  ·  шаг ' + (s.story && s.story.step !== undefined ? s.story.step : '—') + '  ·  золото в сейве: ' + stat(s.gold), 't-sys');
+    return;
+  }
+  if (cmd === '/rest' && parts[1] === 'off') {
+    const s = getSave(); if (needSave(s)) return;
+    s.restUntil = 0;
+    writeSave(s);
+    tprint('Цепи сняты — отдых мгновенно завершён. Обнови игру (Ctrl+F5).', 't-ok');
+    return;
+  }
+  if (cmd === '/log' && parts[1] === 'clear') {
+    const s = getSave(); if (needSave(s)) return;
+    s.log = [];
+    writeSave(s);
+    tprint('Журнал очищен.', 't-ok');
+    return;
+  }
+
+  const addMap = { '/gold': 'gold', '/gems': 'stones', '/ess': 'essence', '/essence': 'essence', '/exp': 'exp', '/power': 'power' };
+  if (addMap[cmd] !== undefined) {
+    if (isNaN(arg)) return tprint('Формат: ' + cmd + ' N (число)', 't-err');
+    const s = getSave(); if (needSave(s)) return;
+    s[addMap[cmd]] = (s[addMap[cmd]] || 0) + arg;
+    if (cmd === '/exp' && !s.expToNext) s.expToNext = 100;
+    writeSave(s);
+    tprint('+ ' + arg + ' → ' + addMap[cmd] + '. Теперь ' + s[addMap[cmd]], 't-ok');
+    return;
+  }
+  const setMap = { '/lvl': 'level', '/hp': 'playerHp', '/maxhp': 'maxPlayerHp', '/food': 'food' };
+  if (setMap[cmd] !== undefined) {
+    if (isNaN(arg)) return tprint('Формат: ' + cmd + ' N (число)', 't-err');
+    const s = getSave(); if (needSave(s)) return;
+    s[setMap[cmd]] = arg;
+    if (cmd === '/maxhp' && s.playerHp === undefined) s.playerHp = arg;
+    if (cmd === '/hp' && s.maxPlayerHp === undefined) s.maxPlayerHp = Math.max(arg, 100);
+    writeSave(s);
+    tprint(setMap[cmd] + ' = ' + arg, 't-ok');
+    return;
+  }
+  tprint('Неизвестная команда: ' + cmd + ' (набери /help)', 't-err');
+}
+function needSave(s) {
+  if (!s) { tprint('Сейв не найден. Открой игру хотя бы раз в этом браузере.', 't-err'); return true; }
+  return false;
+}
+document.getElementById('term-input').addEventListener('keydown', e => { if (e.key === 'Enter') termRun(); });
+tprint('Lotus Ascension · админ-терминал', 't-sys');
+tprint('Связь с сейвом: ' + (getSave() ? 'установлена ✔' : 'сейв не найден — открой игру в этом браузере'), getSave() ? 't-ok' : 't-warn');
+
+/* ---------- журнал ---------- */
+function renderLogView() {
+  const s = getSave();
+  const card = $('log-card');
+  if (!s || !Array.isArray(s.log) || s.log.length === 0) {
+    card.innerHTML = '<div class="empty">Журнал пуст.<br>Открой игру и поиграй — события (победы, покупки, находки) появятся здесь.<br><br>Журнал пишется в сейв при каждом сохранении игры.</div>';
+    return;
+  }
+  card.innerHTML = '<h2 style="color:var(--gold);font-size:1rem;margin-bottom:10px">📜 Журнал (' + s.log.length + ')</h2>' +
+    s.log.map(e =>
+      '<div class="log-entry ' + (e.type || 'info') + '"><span class="lt">[' + (e.time || '--:--') + ']</span>' + esc(e.text) + '</div>'
+    ).join('');
+}
+function esc(t) { const d = document.createElement('div'); d.textContent = t || ''; return d.innerHTML; }
+
+/* ---------- база данных ---------- */
+function dbReload() {
+  const s = getSave();
+  if (!s) {
+    $('db-stats').innerHTML = '';
+    $('db-area').value = '';
+    $('db-msg').textContent = 'Сейв не найден. Открой игру хотя бы раз в этом браузере.';
+    $('db-msg').className = 'db-msg bad';
+    return;
+  }
+  $('db-area').value = JSON.stringify(s, null, 2);
+  renderDbStats(s);
+  $('db-msg').textContent = '';
+}
+function renderDbStats(s) {
+  const rows = [
+    ['Герой', s.heroName || '—'], ['Уровень', stat(s.level)], ['Сила', stat(s.power)],
+    ['HP', stat(s.playerHp) + ' / ' + stat(s.maxPlayerHp)], ['Золото 🪙', stat(s.gold)],
+    ['Алмазы 💎', stat(s.stones)], ['Эссенция ✨', stat(s.essence)],
+    ['Пайки 🥫', stat(s.food)], ['Глава', s.story ? stat(s.story.chapter) : '—'],
+    ['Питомцы', Array.isArray(s.companions) ? s.companions.length : 0],
+    ['Гильдия', s.guild && s.guild.name ? s.guild.name : '—'],
+    ['Арена (рейтинг)', s.arena ? stat(s.arena.rating) : '—'],
+    ['Обновлён', s.lastSaveTime ? new Date(s.lastSaveTime).toLocaleString('ru-RU') : '—'],
+  ];
+  $('db-stats').innerHTML = rows.map(([k, v]) => '<div class="stat"><div class="k">' + k + '</div><b>' + esc(String(v)) + '</b></div>').join('');
+}
+function dbSave() {
+  try {
+    const data = JSON.parse($('db-area').value);
+    if (typeof data !== 'object' || data === null) throw new Error('не объект');
+    writeSave(data);
+    renderDbStats(data);
+    $('db-msg').textContent = 'Сохранено в сейв ✔ Открой игру (Ctrl+F5), чтобы увидеть изменения.';
+    $('db-msg').className = 'db-msg ok';
+  } catch (e) {
+    $('db-msg').textContent = 'Ошибка JSON: ' + e.message;
+    $('db-msg').className = 'db-msg bad';
+  }
+}
+
+</script>
+</body>
+</html>
