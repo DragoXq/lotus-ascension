@@ -4699,7 +4699,7 @@ function initHero3D() {
 
     init();
       // ===================== ЭКСПОРТ/ИМПОРТ СЕЙВА + АВТООБНОВЛЕНИЕ =====================
-    var APP_VERSION = '1.5.0';
+    var APP_VERSION = '1.6.0';
     function strHash(s) { var h = 5381; s = String(s); for (var i = 0; i < s.length; i++) { h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; } return h.toString(36); }
     function openSaveIO() {
       var m = document.getElementById('saveio-modal'); if (!m) return;
@@ -4722,13 +4722,22 @@ function initHero3D() {
       showToast(T('saveImported') || 'Сейв импортирован! Обновляю…');
       setTimeout(function(){ location.reload(); }, 800);
     }
+    function dismissUpdate() {
+      try { localStorage.setItem('np_upd_dismissed', APP_VERSION); } catch(e) {}
+      location.reload();
+    }
     function checkNewVersion() {
       if (location.protocol === 'file:') return;
       try {
         fetch('version.json', { cache: 'no-store' }).then(function(r){ return r.ok ? r.json() : null; }).then(function(j) {
           if (!j || !j.version) return;
-          if (String(j.version) !== APP_VERSION) {
-            var b = document.getElementById('upd-banner'); if (b) b.classList.remove('hidden');
+          var remote = String(j.version).split('.'), local = String(APP_VERSION).split('.');
+          var newer = false;
+          for (var i = 0; i < 3; i++) { var a = parseInt(remote[i]||'0',10), b = parseInt(local[i]||'0',10); if (a > b) { newer = true; break; } if (a < b) break; }
+          var dismissed = '';
+          try { dismissed = localStorage.getItem('np_upd_dismissed') || ''; } catch(e) {}
+          if (newer && dismissed !== String(j.version)) {
+            var el = document.getElementById('upd-banner'); if (el) el.classList.remove('hidden');
           }
         }).catch(function(){});
       } catch(e) {}
@@ -4773,7 +4782,7 @@ function initHero3D() {
   </div>
   <div id="upd-banner" class="hidden" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:linear-gradient(90deg,#7b2ff7,#b249d8);color:#fff;padding:10px 14px;text-align:center;font-size:0.95rem;">
     <span data-i18n="updateAvail">🔄 Доступна новая версия игры</span>
-    <button class="btn btn-primary" style="margin-left:10px;padding:6px 14px" onclick="location.reload()"><span data-i18n="updateBtn">Обновить</span></button>
+    <button class="btn btn-primary" style="margin-left:10px;padding:6px 14px" onclick="dismissUpdate()"><span data-i18n="updateBtn">Обновить</span></button>
   </div>
 
 
