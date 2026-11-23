@@ -253,10 +253,23 @@
     .gmember-role { font-size:0.68rem; padding:2px 8px; border-radius:999px; border:1px solid rgba(240,193,75,0.45); color:var(--gold); flex:none; }
     .gmember-role.m { border-color:#2b3a52; color:#9fb3d1; }
     .gmember-contrib { margin-left:auto; font-size:0.8rem; color:#cfe0f5; flex:none; }
+    .exp-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
+    .exp-actions .btn { font-size:0.85rem; padding:10px 8px; white-space:nowrap; }
+    .exp-actions .btn:last-child { grid-column:1 / -1; }
     @media (max-width:640px) {
+      .exp-actions .btn { font-size:0.78rem; padding:9px 4px; }
       .guild-shell { flex-direction:column; }
       .guild-nav { flex:none; width:100%; }
       .gnav-item { padding:9px 12px; }
+   
+      .exp-hud-row { flex-wrap: wrap; justify-content: center; row-gap: 6px; }
+      .exp-hud-left, .exp-hud-right, .exp-hud-top { white-space: normal; max-width: 100%; box-sizing: border-box; }
+      .exp-hud-right { flex-wrap: wrap; justify-content: center; padding: 5px 8px; }
+      .exp-card { max-width: 100%; width: 100%; padding: 10px 8px; }
+      .exp-card .btn { font-size: 0.85rem; padding: 9px 12px; }
+      #exp-modal .modal-card { max-width: 100%; max-height: 88vh; }
+      .lg-card { padding: 24px 16px; max-width: 320px; }
+      .lg-input { font-size: 16px; }
     }
     .tab .tab-ico {
       display: block;
@@ -1118,7 +1131,7 @@
             <div class="set-hint" data-i18n="termHint">Терминал: команды культиватора и права ГМ</div>
             <button class="btn btn-secondary" onclick="openGmTerm()">⌨ <span data-i18n="termOpen">Терминал</span></button>
           </div>
-          <div id="set-saveio">
+          <div id="set-saveio" style="display:none">
             <div class="set-hint" data-i18n="saveIOHint">Перенос сейва между устройствами и адресами игры</div>
             <button class="btn btn-secondary" onclick="openSaveIO()">📦 <span data-i18n="saveIOOpen">Экспорт / импорт сейва</span></button>
           </div>
@@ -3516,6 +3529,7 @@ function selectGender(g) {
       if (state.maxPlayerHp == null) state.maxPlayerHp = 100;
       if (state.playerHp == null) state.playerHp = state.maxPlayerHp;
       if (state.restUntil == null) state.restUntil = 0;
+      if (state.potions == null) state.potions = 0;
     }
     function restRemain(){
       return Math.max(0, (state.restUntil || 0) - Date.now());
@@ -3548,6 +3562,19 @@ function selectGender(g) {
       const healed = Math.max(0, Math.floor(state.playerHp) - before);
       showToast('🍖 Съел пайек: +' + healed + ' жизни');
       addLog('Съел пайек: +' + healed + ' жизни', 'win');
+      updateUI(); expUpdateHud(); updateFoodUI(); save();
+    }
+    function drinkPotion(){
+      ensureFood();
+      if ((state.potions || 0) <= 0) { showToast('🧪 Зелий нет — купи в магазине 🏪 или побеждай монстров'); return; }
+      const mx = Math.max(1, Math.floor(state.maxPlayerHp || 100));
+      const before = Math.max(0, Math.floor(state.playerHp || 0));
+      if (before >= mx) { showToast('Жизнь уже полная'); return; }
+      state.potions -= 1;
+      state.playerHp = Math.min(mx, before + Math.floor(mx * 0.4));
+      const healed = Math.max(0, Math.floor(state.playerHp) - before);
+      showToast('🧪 Зелье выпито: +' + healed + ' жизни');
+      addLog('Выпил зелье жизни: +' + healed + ' жизни', 'win');
       updateUI(); expUpdateHud(); updateFoodUI(); save();
     }
     function renderShop(){
@@ -3587,12 +3614,9 @@ function selectGender(g) {
       } else if (kind === 'potion'){
         if (gold < 60) { showToast('🪙 Не хватает золота — нужно 60'); return; }
         state.gold = gold - 60;
-        var mx = Math.max(1, Math.floor(state.maxPlayerHp || 100));
-        var before = Math.max(0, Math.floor(state.playerHp || 0));
-        state.playerHp = Math.min(mx, before + 25);
-        var healed = Math.floor(state.playerHp) - before;
-        showToast('🧪 Зелье выпито: +' + healed + ' здоровья');
-        addLog('Выпил зелье жизни: +' + healed + ' здоровья', 'win');
+        state.potions = (state.potions || 0) + 1;
+        showToast('🧪 Зелье куплено — ждёт в инвентаре и в бою');
+        addLog('Купил зелье жизни (в инвентаре)', 'win');
       }
       updateUI(); expUpdateHud(); updateFoodUI(); updateRestUI(); renderShop(); save();
     }
@@ -3609,7 +3633,17 @@ function selectGender(g) {
         + '</div>'
         + '<button class="btn btn-primary" style="width:auto;flex:0 0 auto;padding:6px 14px;font-size:0.75rem;white-space:nowrap;' + (f <= 0 ? 'opacity:.5;pointer-events:none;' : '') + '" onclick="eatFood(); renderInv();">Кушать</button>'
         + '</div>';
-      box.innerHTML = row;
+      var p = state.potions || 0;
+      var prow = '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid rgba(255,255,255,0.08);border-radius:14px;background:rgba(255,255,255,0.04);margin-bottom:10px">'
+        + '<div style="font-size:1.7rem">🧪</div>'
+        + '<div style="flex:1;min-width:0">'
+        + '<div style="font-weight:700;color:var(--text)">Зелья жизни <span style="font-weight:800;color:var(--gold,#f5b942)">' + p + '</span></div>'
+        + '<div style="font-size:0.8rem;color:var(--text)">Восстанавливает 40% здоровья</div>'
+        + '<div style="font-size:0.74rem;font-style:italic;color:#c9a24a;opacity:.85">«Капля нектара — и раны уходят, как туман»</div>'
+        + '</div>'
+        + '<button class="btn btn-primary" style="width:auto;flex:0 0 auto;padding:6px 14px;font-size:0.75rem;white-space:nowrap;' + (p <= 0 ? 'opacity:.5;pointer-events:none;' : '') + '" onclick="drinkPotion(); renderInv();">Выпить</button>'
+        + '</div>';
+      box.innerHTML = row + prow;
     }
     function updateFoodUI(){
       const el = document.getElementById('food-count');
@@ -3625,22 +3659,66 @@ function selectGender(g) {
       if (phn) phn.textContent = hp + '/' + mx;
       if (mhn) mhn.textContent = Math.max(0, b.mHp) + '/' + b.mHpMax;
     }
-    function expAttackRound(){
+    function expAttackRound(kind){
       const b = EXP.battleTimer;
       if (!b || b.done) return;
-      b.round++;
-      const pd = Math.max(1, Math.floor(b.my * (0.07 + Math.random() * 0.06)));
-      const md = Math.max(1, Math.floor(b.mp * (0.07 + Math.random() * 0.06)));
-      b.mHp -= pd;
-      state.playerHp = Math.max(0, (state.playerHp || 0) - md);
+      kind = kind || 'atk';
       const log = document.getElementById('eb-log');
-      if (log) log.textContent = 'Раунд ' + b.round + ': ты бьёшь на ' + pd + ', монстр бьёт по жизни на ' + md;
+      if (kind === 'pot' && (state.potions || 0) <= 0) {
+        if (log) log.textContent = '🧪 Зелий нет — купи в магазине 🏪 или побеждай монстров';
+        return;
+      }
+      b.round++;
+      b.def = false;
+      var parts = [];
+
+      if (kind === 'run') {
+        if (Math.random() < 0.5) { b.done = true; expEndBattle('skip', b.el, b, b.mp, b.my); return; }
+        parts.push('🏃 Побег не удался!');
+      } else if (kind === 'pot') {
+        state.potions = (state.potions || 0) - 1;
+        const mx = Math.max(1, Math.floor(state.maxPlayerHp || 100));
+        const before = Math.max(0, Math.floor(state.playerHp || 0));
+        state.playerHp = Math.min(mx, before + Math.floor(mx * 0.4));
+        parts.push('🧪 Зелье: +' + (Math.floor(state.playerHp) - before) + ' жизни');
+      } else {
+        var mult = 1, miss = false;
+        if (kind === 'hv') { mult = 2; if (Math.random() < 0.3) miss = true; }
+        if (miss) parts.push('💥 Сила небес промахнулась!');
+        else {
+          var pd = Math.max(1, Math.floor(b.my * (0.07 + Math.random() * 0.06) * mult));
+          var crit = Math.random() < 0.15;
+          if (crit) pd *= 2;
+          b.mHp -= pd;
+          parts.push((kind === 'hv' ? '💥 Сила небес: -' : '⚔ Ты: -') + pd + (crit ? ' КРИТ!' : ''));
+        }
+      }
+
+      if (kind === 'def') b.def = true;
+
+      if (b.mHp > 0) {
+        var md = Math.max(1, Math.floor(b.mp * (0.07 + Math.random() * 0.06)));
+        var mCrit = Math.random() < 0.15;
+        if (mCrit) md *= 2;
+        if (b.def) md = Math.max(0, Math.floor(md * 0.3));
+        state.playerHp = Math.max(0, (state.playerHp || 0) - md);
+        parts.push('Монстр: -' + md + (mCrit ? ' КРИТ!' : ''));
+        if (b.def) {
+          const mx2 = Math.max(1, Math.floor(state.maxPlayerHp || 100));
+          const before2 = Math.max(0, Math.floor(state.playerHp || 0));
+          state.playerHp = Math.min(mx2, before2 + Math.floor(mx2 * 0.05));
+          parts.push('🛡 Медитация: +' + (Math.floor(state.playerHp) - before2) + ' жизни');
+        }
+      }
+
+      if (log) log.textContent = 'Раунд ' + b.round + ': ' + parts.join('; ');
       expBattleUpdate(b);
       expUpdateHud(); updateUI(); save();
       if (b.mHp <= 0 || state.playerHp <= 0) {
         b.done = true;
         expEndBattle(b.mHp <= 0 ? 'win' : 'lose', b.el, b, b.mp, b.my);
       }
+      b.def = false;
     }
     function expAutoBattle(el){
       if (document.getElementById('exp-battle-ov')) return;
@@ -3663,10 +3741,13 @@ function selectGender(g) {
         '<div class="exp-battle-side" style="text-align:right"><div class="exp-hud-lbl">Монстр — сила ' + mp + '</div>' +
         '<div class="exp-battle-hp"><div id="eb-mhp" style="background:#e5485a;width:100%"></div></div>' +
         '<div class="exp-hud-lbl" id="eb-mhpn">' + mHpMax + '/' + mHpMax + '</div></div></div>' +
-        '<div style="text-align:center;color:#8a93a6;min-height:38px;font-size:13px" id="eb-log">Жми «Атака», когда готов</div>' +
-        '<div style="display:flex;gap:8px;justify-content:center;margin-top:6px">' +
-        '<button class="btn btn-primary" onclick="expAttackRound()">⚔ Атака</button>' +
-        '<button class="btn btn-secondary" onclick="expEndBattle(\'skip\')">Сбежать</button></div></div>';
+        '<div style="text-align:center;color:#8a93a6;min-height:38px;font-size:13px" id="eb-log">Выбери действие — бой по раундам</div>' +
+        '<div class="exp-actions">' +
+        '<button class="btn btn-primary" onclick="expAttackRound(\'atk\')">⚔ Атака</button>' +
+        '<button class="btn btn-primary" onclick="expAttackRound(\'hv\')">💥 Сила небес</button>' +
+        '<button class="btn btn-secondary" onclick="expAttackRound(\'def\')">🛡 Защита</button>' +
+        '<button class="btn btn-secondary" onclick="expAttackRound(\'pot\')">🧪 Зелье</button>' +
+        '<button class="btn btn-secondary" onclick="expAttackRound(\'run\')">🏃 Сбежать</button></div></div>';
       sc.appendChild(ov);
       expBattleUpdate(b);
     }
@@ -3699,16 +3780,19 @@ function selectGender(g) {
         loot.innerHTML = '<img src="' + CHEST_IMG + '" style="height:56px;width:auto;display:block;margin-bottom:36px" alt="сундук добычи">';
         loot.onclick = function(){ expOpenLootChest(loot); };
         document.getElementById('exp-items').appendChild(loot);
-        expResultWindow(true, [
+        var rw = [
           ['Опыт', '+' + exp],
           ['Алмазы', '+' + big],
           ['Золото', '+' + gold],
           ['Эссенция', '+' + essence],
           ['Кристаллы в сундуке', '+' + stones],
           ['🍖 Паёк', '+1 (кушать в инвентаре)']
-        ]);
+        ];
+        var potDrop = Math.random() < 0.35;
+        if (potDrop) { state.potions = (state.potions || 0) + 1; rw.push(['🧪 Зелье жизни', '+1 — выпей в бою или в инвентаре']); }
+        expResultWindow(true, rw);
         state.food = (state.food || 0) + 1;
-        addLog('Победил монстра: сундук добычи впереди, +1 паёк', 'win');
+        addLog('Победил монстра: сундук добычи впереди, +1 паёк' + (potDrop ? ', +1 зелье' : ''), 'win');
       } else {
         if (el) el.dataset.fighting = '';
         state.playerHp = Math.max(1, Math.floor((state.maxPlayerHp || 100) * 0.3));
@@ -4346,7 +4430,7 @@ function initHero3D() {
         mStory:'Сюжет', mInv:'Инвентарь', mGuild:'Гильдия', mAch:'Ачивки', mPets:'Питомцы', mShop:'Магазин', mSettings:'Настройки',
         settingsTitle:'Настройки', setName:'Имя', setEmail:'Почта', setLang:'Язык',
         nameHint:'Имя героя (до 16 символов)', saveName:'Сохранить имя', nameSaved:'Имя сохранено ✓',
-        emailHint:'Привяжи почту, чтобы не потерять прогресс', emailAdd:'Добавить почту', emailChange:'Изменить', emailRemove:'Убрать', emailSaved:'Почта сохранена ✓', emailBad:'Некорректный адрес', genderHint:'Пол персонажа', gFemale:'Женский', gMale:'Мужской', genderSaved:'Пол изменён ✓', passHint:'Пароль (локальная защита сейва)', passAdd:'Установить пароль', passChange:'Изменить', passRemove:'Убрать', passRemoved:'Пароль убран ✓', passEnter:'Введите новый пароль (минимум 4 символа):', passShort:'Минимум 4 символа', passSaved:'Пароль сохранён ✓', serverHint:'Сервер', serverBad:'Введите имя сервера', signOutHint:'Выйти: вернуться к окну входа (сейв сохраняется)', signOut:'Выйти', termHint:'Терминал: команды культиватора и права ГМ', termOpen:'Терминал', termTitle:'⌨ Терминал', termHint2:'Введите /help для списка команд. ГМ-команды доступны после входа как ГМ.', gmClose:'Закрыть', gmOn:'Режим ГМ: включён 👑', gmOff:"Режим ГМ: выключен. Введи /admin <пароль> для входа", gmAlready:'Режим ГМ уже включён', gmOffMsg:'Режим ГМ выключен', gmDenied:'Отказано: неверный пароль', gmUnknown:'Неизвестная команда. /help — список', gmDone:'✓', gmPassSet:'Пароль ГМ обновлён ✓', restOff:'Цепи отдыха сняты ✓', helpBase:'/help — команды · /admin <пароль> — войти как ГМ · /adminout — выйти из ГМ · /adminpass <новый> — сменить пароль ГМ', helpAdmin:'ГМ: /gold N · /stones N · /ess N · /exp N · /power N — добавить ресурс · /lvl N — уровень · /hp N — здоровье · /maxhp N — макс. HP · /food N — пайки · /rest off — снять цепи отдыха', signOutQ:'Точно выйти? Сейв будет полностью удалён!', signOutType:'Введите слово ВЫЙТИ для подтверждения:', signOutWord:'ВЫЙТИ', signOutCancelled:'Выход отменён', saveIOHint:'Перенос сейва между устройствами и адресами игры', saveIOOpen:'Экспорт / импорт сейва', saveIOTitle:'📦 Экспорт и импорт сейва', saveCopy:'Копировать', saveCopied:'Код сейва скопирован ✓', saveImport:'Импортировать', saveImported:'Сейв импортирован! Обновляю…', saveImportErr:'Неверный код сейва', updateAvail:'🔄 Доступна новая версия игры', updateBtn:'Обновить',
+        emailHint:'Привяжи почту, чтобы не потерять прогресс', emailAdd:'Добавить почту', emailChange:'Изменить', emailRemove:'Убрать', emailSaved:'Почта сохранена ✓', emailBad:'Некорректный адрес', genderHint:'Пол персонажа', gFemale:'Женский', gMale:'Мужской', genderSaved:'Пол изменён ✓', passHint:'Пароль (локальная защита сейва)', passAdd:'Установить пароль', passChange:'Изменить', passRemove:'Убрать', passRemoved:'Пароль убран ✓', passEnter:'Введите новый пароль (минимум 4 символа):', passShort:'Минимум 4 символа', passSaved:'Пароль сохранён ✓', serverHint:'Сервер', serverBad:'Введите имя сервера', signOutHint:'Выйти: сохранённый сейв — к окну входа; без экспорта персонаж будет удалён', signOut:'Выйти', termHint:'Терминал: команды культиватора и права ГМ', termOpen:'Терминал', termTitle:'⌨ Терминал', termHint2:'Введите /help для списка команд. ГМ-команды доступны после входа как ГМ.', gmClose:'Закрыть', gmOn:'Режим ГМ: включён 👑', gmOff:"Режим ГМ: выключен. Введи /admin <пароль> для входа", gmAlready:'Режим ГМ уже включён', gmOffMsg:'Режим ГМ выключен', gmDenied:'Отказано: неверный пароль', gmUnknown:'Неизвестная команда. /help — список', gmDone:'✓', gmPassSet:'Пароль ГМ обновлён ✓', restOff:'Цепи отдыха сняты ✓', helpBase:'/help — команды · /admin <пароль> — войти как ГМ · /adminout — выйти из ГМ · /adminpass <новый> — сменить пароль ГМ', helpAdmin:'ГМ: /gold N · /stones N · /ess N · /exp N · /power N — добавить ресурс · /lvl N — уровень · /hp N — здоровье · /maxhp N — макс. HP · /food N — пайки · /rest off — снять цепи отдыха', signOutQ:'Точно выйти? Сейв будет полностью удалён!', signOutType:'Введите слово ВЫЙТИ для подтверждения:', signOutWord:'ВЫЙТИ', signOutCancelled:'Выход отменён', saveIOHint:'Перенос сейва между устройствами и адресами игры', saveIOOpen:'Экспорт / импорт сейва', saveIOTitle:'📦 Экспорт и импорт сейва', saveCopy:'Копировать', saveCopied:'Код сейва скопирован ✓', saveImport:'Импортировать', saveImported:'Сейв импортирован! Обновляю…', saveImportErr:'Неверный код сейва', loginIdHint:'Почта или ник', loginUserErr:'Такого героя нет. Проверь имя или почту', restoreBtn:'Восстановить из кода сейва', wipeTitle:'Прогресс не сохранён', wipeText:'Выход без экспорта удалит персонажа навсегда — путь начнётся заново: выбор пола и имя героя.', wipeSafe:'Код сейва скопирован — им можно восстановить прогресс. Теперь удаление безопасно.', wipeSaved:'Код сейва уже сохранён — прогресс восстановим через импорт.', wipeCopyBtn:'📦 Скопировать код сейва', wipeExitBtn:'✓ Выйти с сохранением', wipeDelBtn:'🗑 Удалить и выйти', wipeDelNewBtn:'🗑 Удалить и создать нового', wipeDelQ:'Точно удалить прогресс навсегда?', wipeCancel:'Отмена', gateWelcome:'С возвращением, ', updateAvail:'🔄 Доступна новая версия игры', updateBtn:'Обновить',
         langHint:'Язык интерфейса (сюжет и бой пока на русском)',
         donateTitle:'Пополнить золото', donateNote:'Демо-режим: в локальном файле реальная оплата недоступна — покупка сразу зачисляет золото.', close:'Закрыть', buy:'Купить', goldAdded:'Золото зачислено! +', notEnoughGems:'Недостаточно алмазов для обмена', notEnoughGold:'Недостаточно золота для обмена', toast:'Сохранено ✓' },
       en: { gameTitle:'Lotus Ascension', tabStatus:'Status', tabProfile:'Profile', tabArena:'Arena', tabBattle:'Battle', tabSets:'Sets', tabSettings:'Settings', tabVip:'VIP', vipTitle:'VIP', vipSoon:'VIP levels and bundles are coming soon — the frame is ready.', secSets:'Bundles', setsSoon:'Nothing here yet — bundles are coming soon', btnAscend:'Ascend level',
@@ -4355,7 +4439,7 @@ function initHero3D() {
         mStory:'Story', mInv:'Inventory', mGuild:'Guild', mAch:'Achievements', mPets:'Pets', mShop:'Shop', mSettings:'Settings',
         settingsTitle:'Settings', setName:'Name', setEmail:'Email', setLang:'Language',
         nameHint:'Hero name (up to 16 chars)', saveName:'Save name', nameSaved:'Name saved ✓',
-        emailHint:'Bind an email so you never lose progress', emailAdd:'Add email', emailChange:'Change', emailRemove:'Remove', emailSaved:'Email saved ✓', emailBad:'Invalid address', genderHint:'Character gender', gFemale:'Female', gMale:'Male', genderSaved:'Gender changed ✓', passHint:'Password (local save protection)', passAdd:'Set password', passChange:'Change', passRemove:'Remove', passRemoved:'Password removed ✓', passEnter:'Enter a new password (min 4 chars):', passShort:'Minimum 4 characters', passSaved:'Password saved ✓', serverHint:'Server', serverBad:'Enter a server name', signOutHint:'Sign out: return to login window (save is kept)', signOut:'Sign out', termHint:'Terminal: commands and GM rights', termOpen:'Terminal', termTitle:'⌨ Terminal', termHint2:'Type /help for the command list. GM commands unlock after GM login.', gmClose:'Close', gmOn:'GM mode: ON 👑', gmOff:"GM mode: off. Type /admin <password> to sign in", gmAlready:'GM mode is already on', gmOffMsg:'GM mode is off', gmDenied:'Denied: wrong password', gmUnknown:'Unknown command. /help for list', gmDone:'✓', gmPassSet:'GM password updated ✓', restOff:'Rest chains removed ✓', helpBase:'/help — commands · /admin <password> — sign in as GM · /adminout — leave GM · /adminpass <new> — change GM password', helpAdmin:'GM: /gold N · /stones N · /ess N · /exp N · /power N — add resource · /lvl N — set level · /hp N — health · /maxhp N — max HP · /food N — rations · /rest off — remove rest chains', signOutQ:'Sign out? Your save will be fully deleted!', signOutType:'Type the word EXIT to confirm:', signOutWord:'EXIT', signOutCancelled:'Sign out cancelled', saveIOHint:'Move your save between devices and game addresses', saveIOOpen:'Export / import save', saveIOTitle:'📦 Export and import save', saveCopy:'Copy', saveCopied:'Save code copied ✓', saveImport:'Import', saveImported:'Save imported! Reloading…', saveImportErr:'Invalid save code', updateAvail:'🔄 A new game version is available', updateBtn:'Update',
+        emailHint:'Bind an email so you never lose progress', emailAdd:'Add email', emailChange:'Change', emailRemove:'Remove', emailSaved:'Email saved ✓', emailBad:'Invalid address', genderHint:'Character gender', gFemale:'Female', gMale:'Male', genderSaved:'Gender changed ✓', passHint:'Password (local save protection)', passAdd:'Set password', passChange:'Change', passRemove:'Remove', passRemoved:'Password removed ✓', passEnter:'Enter a new password (min 4 chars):', passShort:'Minimum 4 characters', passSaved:'Password saved ✓', serverHint:'Server', serverBad:'Enter a server name', signOutHint:'Sign out: saved save returns to login; without export the character is deleted', signOut:'Sign out', termHint:'Terminal: commands and GM rights', termOpen:'Terminal', termTitle:'⌨ Terminal', termHint2:'Type /help for the command list. GM commands unlock after GM login.', gmClose:'Close', gmOn:'GM mode: ON 👑', gmOff:"GM mode: off. Type /admin <password> to sign in", gmAlready:'GM mode is already on', gmOffMsg:'GM mode is off', gmDenied:'Denied: wrong password', gmUnknown:'Unknown command. /help for list', gmDone:'✓', gmPassSet:'GM password updated ✓', restOff:'Rest chains removed ✓', helpBase:'/help — commands · /admin <password> — sign in as GM · /adminout — leave GM · /adminpass <new> — change GM password', helpAdmin:'GM: /gold N · /stones N · /ess N · /exp N · /power N — add resource · /lvl N — set level · /hp N — health · /maxhp N — max HP · /food N — rations · /rest off — remove rest chains', signOutQ:'Sign out? Your save will be fully deleted!', signOutType:'Type the word EXIT to confirm:', signOutWord:'EXIT', signOutCancelled:'Sign out cancelled', saveIOHint:'Move your save between devices and game addresses', saveIOOpen:'Export / import save', saveIOTitle:'📦 Export and import save', saveCopy:'Copy', saveCopied:'Save code copied ✓', saveImport:'Import', saveImported:'Save imported! Reloading…', saveImportErr:'Invalid save code', loginIdHint:'Email or nickname', loginUserErr:'No such hero. Check the name or email', restoreBtn:'Restore from save code', wipeTitle:'Progress not saved', wipeText:'Sign out without exporting will delete your character forever — the path will start over: choose gender and name.', wipeSafe:'Save code copied — it can restore your progress. Deletion is now safe.', wipeSaved:'Save code already stored — progress can be restored via import.', wipeCopyBtn:'📦 Copy save code', wipeExitBtn:'✓ Sign out (saved)', wipeDelBtn:'🗑 Delete and sign out', wipeDelNewBtn:'🗑 Delete and create new', wipeDelQ:'Delete progress forever?', wipeCancel:'Cancel', gateWelcome:'Welcome back, ', updateAvail:'🔄 A new game version is available', updateBtn:'Update',
         langHint:'Interface language (story and battle texts stay Russian for now)',
         donateTitle:'Top up gold', donateNote:'Demo mode: real payment is not possible in a local file — buying credits gold instantly.', close:'Close', buy:'Buy', goldAdded:'Gold added! +', notEnoughGems:'Not enough gems for exchange', notEnoughGold:'Not enough gold for exchange', toast:'Saved ✓' }
     };
@@ -4623,8 +4707,9 @@ function initHero3D() {
       state.server = v; save(); showToast(T('toast'));
     }
     function signOut(){
-      try { localStorage.setItem('np_logged_out', '1'); } catch(e) {}
-      location.reload();
+      var saved = false; try { saved = localStorage.getItem('np_exported') === '1'; } catch(e) {}
+      if (saved) { try { localStorage.setItem('np_logged_out', '1'); } catch(e) {} location.reload(); return; }
+      wipeShow('signout');
     }
     function wipeSave(){
       if (!confirm(T('signOutQ'))) return;
@@ -4706,7 +4791,7 @@ function initHero3D() {
 
     init();
       // ===================== ЭКСПОРТ/ИМПОРТ СЕЙВА + АВТООБНОВЛЕНИЕ =====================
-    var APP_VERSION = '1.7.0';
+    var APP_VERSION = '2.0.0';
     function cmpVer(a,b){ var A=String(a).split('.'),B=String(b).split('.'); for(var i=0;i<3;i++){ var x=parseInt(A[i]||0,10),y=parseInt(B[i]||0,10); if(x>y)return 1; if(x<y)return -1; } return 0; }
     function dismissUpdate(){ try{ localStorage.setItem('np_upd_dismissed', window.__npRemoteVer || APP_VERSION); }catch(e){} location.reload(); }
     function strHash(s) { var h = 5381; s = String(s); for (var i = 0; i < s.length; i++) { h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; } return h.toString(36); }
@@ -4716,11 +4801,14 @@ function initHero3D() {
       var t = document.getElementById('saveio-text');
       try { t.value = localStorage.getItem('nebesnyy_put_save_v2') || ''; } catch(e) { t.value = ''; }
     }
-    function closeSaveIO() { var m = document.getElementById('saveio-modal'); if (m) m.classList.add('hidden'); }
+    function closeSaveIO() { var m = document.getElementById('saveio-modal'); if (m) m.classList.add('hidden');
+      var need = false; try { need = localStorage.getItem('np_logged_out') === '1'; } catch(e) {}
+      if (need) { var g = document.getElementById('login-gate'); if (g) g.style.display = 'flex'; } }
     function copySaveCode() {
       var t = document.getElementById('saveio-text');
       t.select();
       try { document.execCommand('copy'); showToast(T('saveCopied') || 'Код сейва скопирован ✓'); } catch(e) { showToast('Ctrl+C'); }
+      try { localStorage.setItem('np_exported', '1'); } catch(e) {}
     }
     function importSaveCode() {
       var code = (document.getElementById('saveio-text').value || '').trim();
@@ -4790,10 +4878,12 @@ function initHero3D() {
 
   <style>
     #login-gate{position:fixed;inset:0;z-index:100000;background:radial-gradient(ellipse at 50% 30%,#2a1d4e 0%,#0d0a1a 70%);display:flex;align-items:center;justify-content:center;padding:18px;}
-    #lg-wipe{position:fixed;inset:0;z-index:100001;background:radial-gradient(ellipse at 50% 30%,#2a1d4e 0%,#0d0a1a 70%);display:none;align-items:center;justify-content:center;padding:18px;}
     .lg-card{background:rgba(22,17,38,.92);border:1px solid rgba(255,215,94,.25);border-radius:20px;padding:34px 28px;max-width:360px;width:100%;text-align:center;box-shadow:0 18px 60px rgba(0,0,0,.6);}
     .lg-mono{width:64px;height:64px;margin:0 auto 16px;border-radius:16px;background:linear-gradient(135deg,#ffd75e,#e8a520);display:flex;align-items:center;justify-content:center;font-size:30px;}
     .lg-title{font-size:1.5rem;font-weight:700;color:#ffd75e;margin-bottom:6px;}
+    .lg-btn2{margin-top:8px;}
+    .lg-err{text-align:center;}
+    .wipe-note{font-size:.85rem;color:#b8a8d8;}
     .lg-sub{font-size:.9rem;color:#b8a8d8;margin-bottom:18px;}
     .lg-input{width:100%;box-sizing:border-box;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font-size:1rem;text-align:center;margin-bottom:10px;}
     .lg-input:focus{outline:none;border-color:#ffd75e;}
@@ -4834,86 +4924,125 @@ function initHero3D() {
       <div class="lg-mono">🪷</div>
       <div class="lg-title" id="lg-title">Войдите</div>
       <div class="lg-sub" id="lg-sub">Врата ждут своего культиватора</div>
-      <input class="lg-input" id="lg-id" type="text" placeholder="Почта или ник" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();var p=document.getElementById('lg-pass');if(p)p.focus();}">
-      <input class="lg-input" id="lg-pass" type="password" placeholder="Введите пароль" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();gateLogin();}">
+      <input class="lg-input" id="lg-id" type="text" placeholder="Почта или ник" autocomplete="off">
+      <input class="lg-input" id="lg-pass" type="password" placeholder="Введите пароль" autocomplete="off">
       <div class="lg-err" id="lg-err">Неверный пароль. Попробуй снова</div>
       <button class="btn btn-primary lg-btn" id="lg-btn" onclick="gateLogin()">Войти</button>
+      <button class="btn btn-secondary lg-btn lg-btn2" id="lg-restore" onclick="gateRestore()">Восстановить из кода сейва</button>
       <button class="lg-new" id="lg-new" onclick="gateNewHero()">Создать нового героя</button>
     </div>
   </div>
 
-  <div id="lg-wipe" style="display:none">
+  <div id="wipe-gate" style="display:none">
     <div class="lg-card">
       <div class="lg-mono">🪷</div>
-      <div class="lg-title" id="lgw-title">Удалить прогресс?</div>
-      <div class="lg-sub" id="lgw-text">Если код сейва не сохранён через «Экспорт», прогресс будет удалён навсегда.</div>
-      <button class="btn btn-primary lg-btn" id="lg-wipe-copy" onclick="gateCopyCode()">📦 Скопировать код сейва</button>
-      <button class="btn btn-primary lg-btn" id="lg-wipe-del" style="background:linear-gradient(135deg,#c0392b,#8e2a20)" onclick="gateWipeConfirm()">🗑 Удалить и создать нового</button>
-      <button class="lg-new" id="lg-wipe-cancel" onclick="gateWipeCancel()">Отмена</button>
+      <div class="lg-title" id="wipe-title">Прогресс не сохранён</div>
+      <div class="lg-sub" id="wipe-text"></div>
+      <button class="btn btn-primary lg-btn" id="wipe-copy" onclick="wipeCopy()">📦 Скопировать код сейва</button>
+      <button class="btn btn-primary lg-btn lg-btn2" id="wipe-exit" onclick="wipeExit()" style="display:none">✓ Выйти с сохранением</button>
+      <button class="btn btn-secondary lg-btn lg-btn2" id="wipe-del" onclick="wipeDel()">🗑 Удалить и выйти</button>
+      <button class="lg-new" id="wipe-cancel" onclick="wipeCancel()">Отмена</button>
     </div>
   </div>
 
   <script>
     function gateLogin(){
-      var id = document.getElementById('lg-id'), p = document.getElementById('lg-pass'), err = document.getElementById('lg-err'), g = document.getElementById('login-gate');
-      var L = (state.lang === 'en');
-      var iv = id ? String(id.value || '').trim() : '';
-      var okId = iv && (
-        String(iv).toLowerCase() === String(state.name || '').toLowerCase() ||
-        String(iv).toLowerCase() === String(state.email || '').toLowerCase() ||
-        String(iv).toUpperCase() === String(state.playerId || '').toUpperCase()
-      );
-      if (!okId) {
-        if (err) { err.textContent = L ? 'No such hero. Check name, email or ID' : 'Такого героя нет. Проверь имя, почту или ID'; err.style.display = 'block'; }
-        if (id) id.value = '';
-        if (p) p.value = '';
-        return;
-      }
+      var id = document.getElementById('lg-id'), p = document.getElementById('lg-pass'),
+          err = document.getElementById('lg-err'), g = document.getElementById('login-gate');
       var v = p ? String(p.value) : '';
-      if (state.passHash) {
-        var h; try { h = btoa(unescape(encodeURIComponent(v))); } catch(e) { h = ''; }
-        if (h !== state.passHash) {
-          if (err) { err.textContent = L ? 'Wrong password. Try again' : 'Неверный пароль. Попробуй снова'; err.style.display = 'block'; }
-          if (p) p.value = '';
+      var who = id ? String(id.value).trim() : '';
+      var showErr = function(t){ if (err){ err.textContent = t; err.style.display = 'block'; } };
+      if (!who) { showErr(T('loginIdHint') || 'Почта или ник'); return; }
+      var n = who.toLowerCase();
+      var uname = (state.name || '').toLowerCase();
+      var uemail = (state.email || '').toLowerCase();
+      var isPid = false;
+      var pid = String(state.playerId || '').toUpperCase();
+      if (/^LA-[A-Z0-9]{6}$/i.test(who) && who.toUpperCase() === pid) isPid = true;
+      if (uname || uemail) {
+        if (!(n === uname || (uemail && n === uemail) || isPid)) {
+          showErr(T('loginUserErr') || 'Такого героя нет. Проверь имя или почту');
           return;
         }
       }
+      if (state.passHash) {
+        var h; try { h = btoa(unescape(encodeURIComponent(v))); } catch(e) { h = ''; }
+        if (h !== state.passHash) { showErr(T('passErr') || 'Неверный пароль. Попробуй снова'); if (p) p.value = ''; return; }
+      }
       try { localStorage.removeItem('np_logged_out'); } catch(e) {}
       if (err) err.style.display = 'none';
+      if (id) id.value = '';
       if (p) p.value = '';
       g.style.display = 'none';
       showToast((T('gateWelcome') || 'С возвращением, ') + (state.name || ''));
     }
-    function gateNewHero(){
-      var m = document.getElementById('lg-wipe');
-      if (m) { m.style.display = 'flex'; gateWipeText(); }
-      else gateWipeConfirm();
+    function gateRestore(){
+      var g = document.getElementById('login-gate');
+      if (g) g.style.display = 'none';
+      openSaveIO();
     }
-    function gateWipeText(){
-      var t = document.getElementById('lgw-text');
-      if (!t) return;
-      var L = (state.lang === 'en');
-      var exp = false; try { exp = localStorage.getItem('np_exported') === '1'; } catch(e) {}
-      if (exp) t.textContent = L ? 'Your save code was copied — progress can be restored with it. Creating a new hero will delete the current save.' : 'Код сейва был скопирован — им можно восстановить прогресс. Создание нового героя удалит текущий сейв.';
-      else t.textContent = L ? 'If you have not saved the save code via Export, your progress will be deleted forever.' : 'Если код сейва не сохранён через «Экспорт», прогресс будет удалён навсегда.';
+    function wipeShow(mode){
+      var w = document.getElementById('wipe-gate'); if (!w) return;
+      w.dataset.mode = mode;
+      var saved = false; try { saved = localStorage.getItem('np_exported') === '1'; } catch(e) {}
+      var tx = document.getElementById('wipe-text'),
+          cp = document.getElementById('wipe-copy'),
+          ex = document.getElementById('wipe-exit'),
+          dl = document.getElementById('wipe-del'),
+          cc = document.getElementById('wipe-cancel'),
+          tt = document.getElementById('wipe-title');
+      if (saved) {
+        if (tt) tt.textContent = T('wipeTitle') || 'Прогресс не сохранён';
+        if (tx) tx.textContent = T('wipeSaved') || 'Код сейва уже сохранён — прогресс восстановим через импорт.';
+        if (cp) cp.style.display = 'none';
+        if (ex) ex.style.display = 'none';
+      } else {
+        if (tt) tt.textContent = T('wipeTitle') || 'Прогресс не сохранён';
+        if (tx) tx.textContent = T('wipeText') || 'Выход без экспорта удалит персонажа навсегда — путь начнётся заново.';
+        if (cp) { cp.style.display = 'block'; cp.textContent = T('wipeCopyBtn') || '📦 Скопировать код сейва'; }
+        if (ex) ex.style.display = 'none';
+      }
+      if (dl) dl.textContent = (mode === 'newhero') ? (T('wipeDelNewBtn') || '🗑 Удалить и создать нового') : (T('wipeDelBtn') || '🗑 Удалить и выйти');
+      if (cc) cc.textContent = T('wipeCancel') || 'Отмена';
+      w.style.display = 'flex';
     }
-    function gateCopyCode(){
-      var code = '';
-      try { code = localStorage.getItem('nebesnyy_put_save_v2') || ''; } catch(e) {}
-      var L = (state.lang === 'en');
-      var done = function(){ try { localStorage.setItem('np_exported','1'); } catch(e) {} gateWipeText(); showToast(L ? 'Save code copied ✓' : 'Код сейва скопирован ✓'); };
-      var legacy = function(){
-        var ta = document.createElement('textarea'); ta.value = code; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    function wipeCopy(){
+      try {
+        var code = localStorage.getItem('nebesnyy_put_save_v2') || '';
+        var ta = document.createElement('textarea');
+        ta.value = code; ta.style.position = 'fixed'; ta.style.opacity = '0';
         document.body.appendChild(ta); ta.select();
-        try { document.execCommand('copy'); done(); } catch(e) { showToast('Ctrl+C'); }
-        document.body.removeChild(ta);
-      };
-      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(done, legacy); else legacy();
+        document.execCommand('copy'); ta.remove();
+      } catch(e) {}
+      try { localStorage.setItem('np_exported', '1'); } catch(e) {}
+      var tx = document.getElementById('wipe-text'), cp = document.getElementById('wipe-copy'), ex = document.getElementById('wipe-exit');
+      if (tx) tx.textContent = T('wipeSafe') || 'Код сейва скопирован — теперь удаление безопасно.';
+      if (cp) cp.style.display = 'none';
+      if (ex) ex.style.display = 'block';
     }
-    function gateWipeCancel(){ var m = document.getElementById('lg-wipe'); if (m) m.style.display = 'none'; }
-    function gateWipeConfirm(){
-      var L = (state.lang === 'en');
-      if (!confirm(L ? 'Delete progress forever?' : 'Точно удалить прогресс навсегда?')) { gateWipeCancel(); return; }
+    function wipeExit(){
+      try { localStorage.setItem('np_logged_out', '1'); } catch(e) {}
+      location.reload();
+    }
+    function wipeDel(){
+      if (!confirm(T('wipeDelQ') || 'Точно удалить прогресс навсегда?')) return;
+      try {
+        var ks = []; for (var i = 0; i < localStorage.length; i++) ks.push(localStorage.key(i));
+        ks.filter(function(k){ return k.indexOf('nebesnyy_') === 0 || k.indexOf('np_') === 0; }).forEach(function(k){ localStorage.removeItem(k); });
+      } catch(e) {}
+      location.reload();
+    }
+    function wipeCancel(){
+      var w = document.getElementById('wipe-gate'); if (w) w.style.display = 'none';
+      if (w && w.dataset.mode === 'newhero') {
+        var g = document.getElementById('login-gate'); if (g) g.style.display = 'flex';
+      }
+    }
+    function gateNewHero(){ wipeShow('newhero'); }
+    function gateNewHero(){
+      if (!confirm(T('signOutQ'))) return;
+      var t = prompt(T('signOutType'), '');
+      if (!t || String(t).trim().toUpperCase() !== T('signOutWord')) { showToast(T('signOutCancelled')); return; }
       try {
         var ks = []; for (var i = 0; i < localStorage.length; i++) ks.push(localStorage.key(i));
         ks.filter(function(k){ return k.indexOf('nebesnyy_') === 0 || k.indexOf('np_') === 0; }).forEach(function(k){ localStorage.removeItem(k); });
@@ -4926,23 +5055,20 @@ function initHero3D() {
       var g = document.getElementById('login-gate'); if (!g) return;
       var L = (state.lang === 'en');
       var t = document.getElementById('lg-title'), sub = document.getElementById('lg-sub'),
+          id = document.getElementById('lg-id'),
           p = document.getElementById('lg-pass'), err = document.getElementById('lg-err'),
-          btn = document.getElementById('lg-btn'), nb = document.getElementById('lg-new');
+          btn = document.getElementById('lg-btn'), nb = document.getElementById('lg-new'),
+          rb = document.getElementById('lg-restore');
       if (t) t.textContent = L ? 'Sign in' : 'Войдите';
       if (sub) sub.textContent = L ? 'The gates await their cultivator' : 'Врата ждут своего культиватора';
-      var idEl = document.getElementById('lg-id');
-      if (idEl) idEl.placeholder = L ? 'Email or nickname' : 'Почта или ник';
+      if (id) id.placeholder = L ? 'Email or nickname' : 'Почта или ник';
       if (p) { p.placeholder = L ? 'Enter password' : 'Введите пароль'; if (!state.passHash) p.placeholder = L ? 'No password set — just enter' : 'Пароль не задан — просто войдите'; }
-      if (err) err.textContent = L ? 'Wrong password. Try again' : 'Неверный пароль. Попробуй снова';
       if (btn) btn.textContent = L ? 'Sign in' : 'Войти';
+      if (rb) rb.textContent = L ? 'Restore from save code' : 'Восстановить из кода сейва';
       if (nb) nb.textContent = L ? 'Create new hero' : 'Создать нового героя';
-      var wt = document.getElementById('lgw-title'), wc = document.getElementById('lg-wipe-copy'), wd = document.getElementById('lg-wipe-del'), wcn = document.getElementById('lg-wipe-cancel');
-      if (wt) wt.textContent = L ? 'Delete progress?' : 'Удалить прогресс?';
-      if (wc) wc.textContent = L ? '📦 Copy save code' : '📦 Скопировать код сейва';
-      if (wd) wd.textContent = L ? '🗑 Delete and create new' : '🗑 Удалить и создать нового';
-      if (wcn) wcn.textContent = L ? 'Cancel' : 'Отмена';
-      gateWipeText();
-      setTimeout(function(){ g.style.display = 'flex'; if (p && state.passHash) { try { p.focus(); } catch(e) {} } }, 2900);
+      if (id) id.addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); if (p) p.focus(); } });
+      if (p) p.addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); gateLogin(); } });
+      setTimeout(function(){ g.style.display = 'flex'; if (id) { try { id.focus(); } catch(e) {} } }, 2900);
     }
     initLoginGate();
   </script>
