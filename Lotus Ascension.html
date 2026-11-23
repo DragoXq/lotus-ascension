@@ -4790,6 +4790,7 @@ function initHero3D() {
 
   <style>
     #login-gate{position:fixed;inset:0;z-index:100000;background:radial-gradient(ellipse at 50% 30%,#2a1d4e 0%,#0d0a1a 70%);display:flex;align-items:center;justify-content:center;padding:18px;}
+    #lg-wipe{position:fixed;inset:0;z-index:100001;background:radial-gradient(ellipse at 50% 30%,#2a1d4e 0%,#0d0a1a 70%);display:none;align-items:center;justify-content:center;padding:18px;}
     .lg-card{background:rgba(22,17,38,.92);border:1px solid rgba(255,215,94,.25);border-radius:20px;padding:34px 28px;max-width:360px;width:100%;text-align:center;box-shadow:0 18px 60px rgba(0,0,0,.6);}
     .lg-mono{width:64px;height:64px;margin:0 auto 16px;border-radius:16px;background:linear-gradient(135deg,#ffd75e,#e8a520);display:flex;align-items:center;justify-content:center;font-size:30px;}
     .lg-title{font-size:1.5rem;font-weight:700;color:#ffd75e;margin-bottom:6px;}
@@ -4833,33 +4834,42 @@ function initHero3D() {
       <div class="lg-mono">🪷</div>
       <div class="lg-title" id="lg-title">Войдите</div>
       <div class="lg-sub" id="lg-sub">Врата ждут своего культиватора</div>
-      <input class="lg-input" id="lg-id" type="text" placeholder="Почта или ник" autocomplete="off">
-      <input class="lg-input" id="lg-pass" type="password" placeholder="Введите пароль" autocomplete="off">
+      <input class="lg-input" id="lg-id" type="text" placeholder="Почта или ник" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();var p=document.getElementById('lg-pass');if(p)p.focus();}">
+      <input class="lg-input" id="lg-pass" type="password" placeholder="Введите пароль" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();gateLogin();}">
       <div class="lg-err" id="lg-err">Неверный пароль. Попробуй снова</div>
       <button class="btn btn-primary lg-btn" id="lg-btn" onclick="gateLogin()">Войти</button>
       <button class="lg-new" id="lg-new" onclick="gateNewHero()">Создать нового героя</button>
     </div>
   </div>
 
+  <div id="lg-wipe" style="display:none">
+    <div class="lg-card">
+      <div class="lg-mono">🪷</div>
+      <div class="lg-title" id="lgw-title">Удалить прогресс?</div>
+      <div class="lg-sub" id="lgw-text">Если код сейва не сохранён через «Экспорт», прогресс будет удалён навсегда.</div>
+      <button class="btn btn-primary lg-btn" id="lg-wipe-copy" onclick="gateCopyCode()">📦 Скопировать код сейва</button>
+      <button class="btn btn-primary lg-btn" id="lg-wipe-del" style="background:linear-gradient(135deg,#c0392b,#8e2a20)" onclick="gateWipeConfirm()">🗑 Удалить и создать нового</button>
+      <button class="lg-new" id="lg-wipe-cancel" onclick="gateWipeCancel()">Отмена</button>
+    </div>
+  </div>
+
   <script>
     function gateLogin(){
-      var p = document.getElementById('lg-pass'), err = document.getElementById('lg-err'), g = document.getElementById('login-gate');
-      var idEl = document.getElementById('lg-id');
-      var who = idEl ? String(idEl.value || '').trim().toLowerCase() : '';
-      var v = p ? String(p.value) : '';
+      var id = document.getElementById('lg-id'), p = document.getElementById('lg-pass'), err = document.getElementById('lg-err'), g = document.getElementById('login-gate');
       var L = (state.lang === 'en');
-      var okWho = false;
-      var cand = [];
-      try { if (state.name) cand.push(String(state.name).trim().toLowerCase()); } catch(e) {}
-      try { if (state.email) cand.push(String(state.email).trim().toLowerCase()); } catch(e) {}
-      try { if (state.playerId) cand.push(String(state.playerId).trim().toLowerCase()); } catch(e) {}
-      if (!who) { okWho = true; }
-      else if (cand.indexOf(who) !== -1) { okWho = true; }
-      if (!okWho) {
-        if (err) { err.textContent = L ? 'No such hero. Check the name or email' : 'Такого героя нет. Проверь имя или почту'; err.style.display = 'block'; }
-        if (idEl) idEl.value = '';
+      var iv = id ? String(id.value || '').trim() : '';
+      var okId = iv && (
+        String(iv).toLowerCase() === String(state.name || '').toLowerCase() ||
+        String(iv).toLowerCase() === String(state.email || '').toLowerCase() ||
+        String(iv).toUpperCase() === String(state.playerId || '').toUpperCase()
+      );
+      if (!okId) {
+        if (err) { err.textContent = L ? 'No such hero. Check name, email or ID' : 'Такого героя нет. Проверь имя, почту или ID'; err.style.display = 'block'; }
+        if (id) id.value = '';
+        if (p) p.value = '';
         return;
       }
+      var v = p ? String(p.value) : '';
       if (state.passHash) {
         var h; try { h = btoa(unescape(encodeURIComponent(v))); } catch(e) { h = ''; }
         if (h !== state.passHash) {
@@ -4869,16 +4879,41 @@ function initHero3D() {
         }
       }
       try { localStorage.removeItem('np_logged_out'); } catch(e) {}
-      if (err) { err.style.display = 'none'; err.textContent = 'Неверный пароль. Попробуй снова'; }
+      if (err) err.style.display = 'none';
       if (p) p.value = '';
-      if (idEl) idEl.value = '';
       g.style.display = 'none';
       showToast((T('gateWelcome') || 'С возвращением, ') + (state.name || ''));
     }
     function gateNewHero(){
-      if (!confirm(T('signOutQ'))) return;
-      var t = prompt(T('signOutType'), '');
-      if (!t || String(t).trim().toUpperCase() !== T('signOutWord')) { showToast(T('signOutCancelled')); return; }
+      var m = document.getElementById('lg-wipe');
+      if (m) { m.style.display = 'flex'; gateWipeText(); }
+      else gateWipeConfirm();
+    }
+    function gateWipeText(){
+      var t = document.getElementById('lgw-text');
+      if (!t) return;
+      var L = (state.lang === 'en');
+      var exp = false; try { exp = localStorage.getItem('np_exported') === '1'; } catch(e) {}
+      if (exp) t.textContent = L ? 'Your save code was copied — progress can be restored with it. Creating a new hero will delete the current save.' : 'Код сейва был скопирован — им можно восстановить прогресс. Создание нового героя удалит текущий сейв.';
+      else t.textContent = L ? 'If you have not saved the save code via Export, your progress will be deleted forever.' : 'Если код сейва не сохранён через «Экспорт», прогресс будет удалён навсегда.';
+    }
+    function gateCopyCode(){
+      var code = '';
+      try { code = localStorage.getItem('nebesnyy_put_save_v2') || ''; } catch(e) {}
+      var L = (state.lang === 'en');
+      var done = function(){ try { localStorage.setItem('np_exported','1'); } catch(e) {} gateWipeText(); showToast(L ? 'Save code copied ✓' : 'Код сейва скопирован ✓'); };
+      var legacy = function(){
+        var ta = document.createElement('textarea'); ta.value = code; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); done(); } catch(e) { showToast('Ctrl+C'); }
+        document.body.removeChild(ta);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(done, legacy); else legacy();
+    }
+    function gateWipeCancel(){ var m = document.getElementById('lg-wipe'); if (m) m.style.display = 'none'; }
+    function gateWipeConfirm(){
+      var L = (state.lang === 'en');
+      if (!confirm(L ? 'Delete progress forever?' : 'Точно удалить прогресс навсегда?')) { gateWipeCancel(); return; }
       try {
         var ks = []; for (var i = 0; i < localStorage.length; i++) ks.push(localStorage.key(i));
         ks.filter(function(k){ return k.indexOf('nebesnyy_') === 0 || k.indexOf('np_') === 0; }).forEach(function(k){ localStorage.removeItem(k); });
@@ -4901,13 +4936,14 @@ function initHero3D() {
       if (err) err.textContent = L ? 'Wrong password. Try again' : 'Неверный пароль. Попробуй снова';
       if (btn) btn.textContent = L ? 'Sign in' : 'Войти';
       if (nb) nb.textContent = L ? 'Create new hero' : 'Создать нового героя';
-      setTimeout(function(){ g.style.display = 'flex'; var f = idEl || p; if (f) { try { f.focus(); } catch(e) {} } }, 2900);
+      var wt = document.getElementById('lgw-title'), wc = document.getElementById('lg-wipe-copy'), wd = document.getElementById('lg-wipe-del'), wcn = document.getElementById('lg-wipe-cancel');
+      if (wt) wt.textContent = L ? 'Delete progress?' : 'Удалить прогресс?';
+      if (wc) wc.textContent = L ? '📦 Copy save code' : '📦 Скопировать код сейва';
+      if (wd) wd.textContent = L ? '🗑 Delete and create new' : '🗑 Удалить и создать нового';
+      if (wcn) wcn.textContent = L ? 'Cancel' : 'Отмена';
+      gateWipeText();
+      setTimeout(function(){ g.style.display = 'flex'; if (p && state.passHash) { try { p.focus(); } catch(e) {} } }, 2900);
     }
-    (function(){
-      var idEl = document.getElementById('lg-id'), p = document.getElementById('lg-pass');
-      if (idEl) idEl.addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); if (p) p.focus(); } });
-      if (p) p.addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); gateLogin(); } });
-    })();
     initLoginGate();
   </script>
 </body>
