@@ -1103,7 +1103,7 @@
             <div class="set-hint" data-i18n="passHint">Пароль (локальная защита сейва)</div>
             <div id="set-pass-box"></div>
           </div>
-          <div id="set-server">
+          <div id="set-server" style="display:none">
             <div class="set-hint" data-i18n="serverHint">Сервер</div>
             <div id="set-server-box" class="create-btn-row"></div>
           </div>
@@ -1114,7 +1114,7 @@
               <button class="btn btn-secondary" id="lang-en" onclick="setLang('en')">🇬🇧 English</button>
             </div>
           </div>
-          <div id="set-term">
+          <div id="set-term" style="display:none">
             <div class="set-hint" data-i18n="termHint">Терминал: команды культиватора и права ГМ</div>
             <button class="btn btn-secondary" onclick="openGmTerm()">⌨ <span data-i18n="termOpen">Терминал</span></button>
           </div>
@@ -1123,7 +1123,7 @@
             <button class="btn btn-secondary" onclick="openSaveIO()">📦 <span data-i18n="saveIOOpen">Экспорт / импорт сейва</span></button>
           </div>
           <div id="set-signout">
-            <div class="set-hint" data-i18n="signOutHint">Выйти: полный сброс сейва и возврат к созданию героя</div>
+            <div class="set-hint" data-i18n="signOutHint">Выйти: вернуться к окну входа (сейв сохраняется)</div>
             <button class="btn btn-secondary" style="border-color:#c0392b;color:#e74c3c" onclick="signOut()"><span data-i18n="signOut">Выйти</span></button>
           </div>
         </div>
@@ -4332,7 +4332,10 @@ function initHero3D() {
     state.lang = state.lang || 'ru';
     state.email = state.email || '';
     try {
-      const _lg = localStorage.getItem('np_lang'); if (_lg) state.lang = _lg;
+      const _lg = localStorage.getItem('np_lang');
+      const _lm = localStorage.getItem('np_lang_manual');
+      if (_lg && _lm) { state.lang = _lg; }
+      else { var _nl = (navigator.language || 'en'); state.lang = /^ru/i.test(_nl) ? 'ru' : 'en'; }
       const _em = localStorage.getItem('np_email'); if (_em) state.email = _em;
     } catch (e) {}
 
@@ -4343,7 +4346,7 @@ function initHero3D() {
         mStory:'Сюжет', mInv:'Инвентарь', mGuild:'Гильдия', mAch:'Ачивки', mPets:'Питомцы', mShop:'Магазин', mSettings:'Настройки',
         settingsTitle:'Настройки', setName:'Имя', setEmail:'Почта', setLang:'Язык',
         nameHint:'Имя героя (до 16 символов)', saveName:'Сохранить имя', nameSaved:'Имя сохранено ✓',
-        emailHint:'Привяжи почту, чтобы не потерять прогресс', emailAdd:'Добавить почту', emailChange:'Изменить', emailRemove:'Убрать', emailSaved:'Почта сохранена ✓', emailBad:'Некорректный адрес', genderHint:'Пол персонажа', gFemale:'Женский', gMale:'Мужской', genderSaved:'Пол изменён ✓', passHint:'Пароль (локальная защита сейва)', passAdd:'Установить пароль', passChange:'Изменить', passRemove:'Убрать', passRemoved:'Пароль убран ✓', passEnter:'Введите новый пароль (минимум 4 символа):', passShort:'Минимум 4 символа', passSaved:'Пароль сохранён ✓', serverHint:'Сервер', serverBad:'Введите имя сервера', signOutHint:'Выйти: полный сброс сейва и возврат к созданию героя', signOut:'Выйти', termHint:'Терминал: команды культиватора и права ГМ', termOpen:'Терминал', termTitle:'⌨ Терминал', termHint2:'Введите /help для списка команд. ГМ-команды доступны после входа как ГМ.', gmClose:'Закрыть', gmOn:'Режим ГМ: включён 👑', gmOff:"Режим ГМ: выключен. Введи /admin <пароль> для входа", gmAlready:'Режим ГМ уже включён', gmOffMsg:'Режим ГМ выключен', gmDenied:'Отказано: неверный пароль', gmUnknown:'Неизвестная команда. /help — список', gmDone:'✓', gmPassSet:'Пароль ГМ обновлён ✓', restOff:'Цепи отдыха сняты ✓', helpBase:'/help — команды · /admin <пароль> — войти как ГМ · /adminout — выйти из ГМ · /adminpass <новый> — сменить пароль ГМ', helpAdmin:'ГМ: /gold N · /stones N · /ess N · /exp N · /power N — добавить ресурс · /lvl N — уровень · /hp N — здоровье · /maxhp N — макс. HP · /food N — пайки · /rest off — снять цепи отдыха', signOutQ:'Точно выйти? Сейв будет полностью удалён!', signOutType:'Введите слово ВЫЙТИ для подтверждения:', signOutWord:'ВЫЙТИ', signOutCancelled:'Выход отменён', saveIOHint:'Перенос сейва между устройствами и адресами игры', saveIOOpen:'Экспорт / импорт сейва', saveIOTitle:'📦 Экспорт и импорт сейва', saveCopy:'Копировать', saveCopied:'Код сейва скопирован ✓', saveImport:'Импортировать', saveImported:'Сейв импортирован! Обновляю…', saveImportErr:'Неверный код сейва', updateAvail:'🔄 Доступна новая версия игры', updateBtn:'Обновить',
+        emailHint:'Привяжи почту, чтобы не потерять прогресс', emailAdd:'Добавить почту', emailChange:'Изменить', emailRemove:'Убрать', emailSaved:'Почта сохранена ✓', emailBad:'Некорректный адрес', genderHint:'Пол персонажа', gFemale:'Женский', gMale:'Мужской', genderSaved:'Пол изменён ✓', passHint:'Пароль (локальная защита сейва)', passAdd:'Установить пароль', passChange:'Изменить', passRemove:'Убрать', passRemoved:'Пароль убран ✓', passEnter:'Введите новый пароль (минимум 4 символа):', passShort:'Минимум 4 символа', passSaved:'Пароль сохранён ✓', serverHint:'Сервер', serverBad:'Введите имя сервера', signOutHint:'Выйти: вернуться к окну входа (сейв сохраняется)', signOut:'Выйти', termHint:'Терминал: команды культиватора и права ГМ', termOpen:'Терминал', termTitle:'⌨ Терминал', termHint2:'Введите /help для списка команд. ГМ-команды доступны после входа как ГМ.', gmClose:'Закрыть', gmOn:'Режим ГМ: включён 👑', gmOff:"Режим ГМ: выключен. Введи /admin <пароль> для входа", gmAlready:'Режим ГМ уже включён', gmOffMsg:'Режим ГМ выключен', gmDenied:'Отказано: неверный пароль', gmUnknown:'Неизвестная команда. /help — список', gmDone:'✓', gmPassSet:'Пароль ГМ обновлён ✓', restOff:'Цепи отдыха сняты ✓', helpBase:'/help — команды · /admin <пароль> — войти как ГМ · /adminout — выйти из ГМ · /adminpass <новый> — сменить пароль ГМ', helpAdmin:'ГМ: /gold N · /stones N · /ess N · /exp N · /power N — добавить ресурс · /lvl N — уровень · /hp N — здоровье · /maxhp N — макс. HP · /food N — пайки · /rest off — снять цепи отдыха', signOutQ:'Точно выйти? Сейв будет полностью удалён!', signOutType:'Введите слово ВЫЙТИ для подтверждения:', signOutWord:'ВЫЙТИ', signOutCancelled:'Выход отменён', saveIOHint:'Перенос сейва между устройствами и адресами игры', saveIOOpen:'Экспорт / импорт сейва', saveIOTitle:'📦 Экспорт и импорт сейва', saveCopy:'Копировать', saveCopied:'Код сейва скопирован ✓', saveImport:'Импортировать', saveImported:'Сейв импортирован! Обновляю…', saveImportErr:'Неверный код сейва', updateAvail:'🔄 Доступна новая версия игры', updateBtn:'Обновить',
         langHint:'Язык интерфейса (сюжет и бой пока на русском)',
         donateTitle:'Пополнить золото', donateNote:'Демо-режим: в локальном файле реальная оплата недоступна — покупка сразу зачисляет золото.', close:'Закрыть', buy:'Купить', goldAdded:'Золото зачислено! +', notEnoughGems:'Недостаточно алмазов для обмена', notEnoughGold:'Недостаточно золота для обмена', toast:'Сохранено ✓' },
       en: { gameTitle:'Lotus Ascension', tabStatus:'Status', tabProfile:'Profile', tabArena:'Arena', tabBattle:'Battle', tabSets:'Sets', tabSettings:'Settings', tabVip:'VIP', vipTitle:'VIP', vipSoon:'VIP levels and bundles are coming soon — the frame is ready.', secSets:'Bundles', setsSoon:'Nothing here yet — bundles are coming soon', btnAscend:'Ascend level',
@@ -4352,7 +4355,7 @@ function initHero3D() {
         mStory:'Story', mInv:'Inventory', mGuild:'Guild', mAch:'Achievements', mPets:'Pets', mShop:'Shop', mSettings:'Settings',
         settingsTitle:'Settings', setName:'Name', setEmail:'Email', setLang:'Language',
         nameHint:'Hero name (up to 16 chars)', saveName:'Save name', nameSaved:'Name saved ✓',
-        emailHint:'Bind an email so you never lose progress', emailAdd:'Add email', emailChange:'Change', emailRemove:'Remove', emailSaved:'Email saved ✓', emailBad:'Invalid address', genderHint:'Character gender', gFemale:'Female', gMale:'Male', genderSaved:'Gender changed ✓', passHint:'Password (local save protection)', passAdd:'Set password', passChange:'Change', passRemove:'Remove', passRemoved:'Password removed ✓', passEnter:'Enter a new password (min 4 chars):', passShort:'Minimum 4 characters', passSaved:'Password saved ✓', serverHint:'Server', serverBad:'Enter a server name', signOutHint:'Sign out: full save wipe and back to hero creation', signOut:'Sign out', termHint:'Terminal: commands and GM rights', termOpen:'Terminal', termTitle:'⌨ Terminal', termHint2:'Type /help for the command list. GM commands unlock after GM login.', gmClose:'Close', gmOn:'GM mode: ON 👑', gmOff:"GM mode: off. Type /admin <password> to sign in", gmAlready:'GM mode is already on', gmOffMsg:'GM mode is off', gmDenied:'Denied: wrong password', gmUnknown:'Unknown command. /help for list', gmDone:'✓', gmPassSet:'GM password updated ✓', restOff:'Rest chains removed ✓', helpBase:'/help — commands · /admin <password> — sign in as GM · /adminout — leave GM · /adminpass <new> — change GM password', helpAdmin:'GM: /gold N · /stones N · /ess N · /exp N · /power N — add resource · /lvl N — set level · /hp N — health · /maxhp N — max HP · /food N — rations · /rest off — remove rest chains', signOutQ:'Sign out? Your save will be fully deleted!', signOutType:'Type the word EXIT to confirm:', signOutWord:'EXIT', signOutCancelled:'Sign out cancelled', saveIOHint:'Move your save between devices and game addresses', saveIOOpen:'Export / import save', saveIOTitle:'📦 Export and import save', saveCopy:'Copy', saveCopied:'Save code copied ✓', saveImport:'Import', saveImported:'Save imported! Reloading…', saveImportErr:'Invalid save code', updateAvail:'🔄 A new game version is available', updateBtn:'Update',
+        emailHint:'Bind an email so you never lose progress', emailAdd:'Add email', emailChange:'Change', emailRemove:'Remove', emailSaved:'Email saved ✓', emailBad:'Invalid address', genderHint:'Character gender', gFemale:'Female', gMale:'Male', genderSaved:'Gender changed ✓', passHint:'Password (local save protection)', passAdd:'Set password', passChange:'Change', passRemove:'Remove', passRemoved:'Password removed ✓', passEnter:'Enter a new password (min 4 chars):', passShort:'Minimum 4 characters', passSaved:'Password saved ✓', serverHint:'Server', serverBad:'Enter a server name', signOutHint:'Sign out: return to login window (save is kept)', signOut:'Sign out', termHint:'Terminal: commands and GM rights', termOpen:'Terminal', termTitle:'⌨ Terminal', termHint2:'Type /help for the command list. GM commands unlock after GM login.', gmClose:'Close', gmOn:'GM mode: ON 👑', gmOff:"GM mode: off. Type /admin <password> to sign in", gmAlready:'GM mode is already on', gmOffMsg:'GM mode is off', gmDenied:'Denied: wrong password', gmUnknown:'Unknown command. /help for list', gmDone:'✓', gmPassSet:'GM password updated ✓', restOff:'Rest chains removed ✓', helpBase:'/help — commands · /admin <password> — sign in as GM · /adminout — leave GM · /adminpass <new> — change GM password', helpAdmin:'GM: /gold N · /stones N · /ess N · /exp N · /power N — add resource · /lvl N — set level · /hp N — health · /maxhp N — max HP · /food N — rations · /rest off — remove rest chains', signOutQ:'Sign out? Your save will be fully deleted!', signOutType:'Type the word EXIT to confirm:', signOutWord:'EXIT', signOutCancelled:'Sign out cancelled', saveIOHint:'Move your save between devices and game addresses', saveIOOpen:'Export / import save', saveIOTitle:'📦 Export and import save', saveCopy:'Copy', saveCopied:'Save code copied ✓', saveImport:'Import', saveImported:'Save imported! Reloading…', saveImportErr:'Invalid save code', updateAvail:'🔄 A new game version is available', updateBtn:'Update',
         langHint:'Interface language (story and battle texts stay Russian for now)',
         donateTitle:'Top up gold', donateNote:'Demo mode: real payment is not possible in a local file — buying credits gold instantly.', close:'Close', buy:'Buy', goldAdded:'Gold added! +', notEnoughGems:'Not enough gems for exchange', notEnoughGold:'Not enough gold for exchange', toast:'Saved ✓' }
     };
@@ -4430,7 +4433,7 @@ function initHero3D() {
       renderMiniTabs(); renderSetTabs(); renderDonate();
     }
     function setLang(l){
-      state.lang = l; try { localStorage.setItem('np_lang', l); } catch (e) {}
+      state.lang = l; try { localStorage.setItem('np_lang', l); localStorage.setItem('np_lang_manual', '1'); } catch (e) {}
       const rb = document.getElementById('lang-ru'), eb = document.getElementById('lang-en');
       if (rb) rb.classList.toggle('lang-on', l === 'ru');
       if (eb) eb.classList.toggle('lang-on', l === 'en');
@@ -4620,6 +4623,10 @@ function initHero3D() {
       state.server = v; save(); showToast(T('toast'));
     }
     function signOut(){
+      try { localStorage.setItem('np_logged_out', '1'); } catch(e) {}
+      location.reload();
+    }
+    function wipeSave(){
       if (!confirm(T('signOutQ'))) return;
       var t = prompt(T('signOutType'), '');
       if (!t || String(t).trim().toUpperCase() !== T('signOutWord')) { showToast(T('signOutCancelled')); return; }
@@ -4699,7 +4706,9 @@ function initHero3D() {
 
     init();
       // ===================== ЭКСПОРТ/ИМПОРТ СЕЙВА + АВТООБНОВЛЕНИЕ =====================
-    var APP_VERSION = '1.6.0';
+    var APP_VERSION = '1.7.0';
+    function cmpVer(a,b){ var A=String(a).split('.'),B=String(b).split('.'); for(var i=0;i<3;i++){ var x=parseInt(A[i]||0,10),y=parseInt(B[i]||0,10); if(x>y)return 1; if(x<y)return -1; } return 0; }
+    function dismissUpdate(){ try{ localStorage.setItem('np_upd_dismissed', window.__npRemoteVer || APP_VERSION); }catch(e){} location.reload(); }
     function strHash(s) { var h = 5381; s = String(s); for (var i = 0; i < s.length; i++) { h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; } return h.toString(36); }
     function openSaveIO() {
       var m = document.getElementById('saveio-modal'); if (!m) return;
@@ -4722,22 +4731,15 @@ function initHero3D() {
       showToast(T('saveImported') || 'Сейв импортирован! Обновляю…');
       setTimeout(function(){ location.reload(); }, 800);
     }
-    function dismissUpdate() {
-      try { localStorage.setItem('np_upd_dismissed', APP_VERSION); } catch(e) {}
-      location.reload();
-    }
     function checkNewVersion() {
       if (location.protocol === 'file:') return;
       try {
         fetch('version.json', { cache: 'no-store' }).then(function(r){ return r.ok ? r.json() : null; }).then(function(j) {
           if (!j || !j.version) return;
-          var remote = String(j.version).split('.'), local = String(APP_VERSION).split('.');
-          var newer = false;
-          for (var i = 0; i < 3; i++) { var a = parseInt(remote[i]||'0',10), b = parseInt(local[i]||'0',10); if (a > b) { newer = true; break; } if (a < b) break; }
-          var dismissed = '';
-          try { dismissed = localStorage.getItem('np_upd_dismissed') || ''; } catch(e) {}
-          if (newer && dismissed !== String(j.version)) {
-            var el = document.getElementById('upd-banner'); if (el) el.classList.remove('hidden');
+          window.__npRemoteVer = String(j.version);
+          var _d = null; try { _d = localStorage.getItem('np_upd_dismissed'); } catch(e) {}
+          if (cmpVer(j.version, APP_VERSION) > 0 && _d !== String(j.version)) {
+            var b = document.getElementById('upd-banner'); if (b) b.classList.remove('hidden');
           }
         }).catch(function(){});
       } catch(e) {}
@@ -4787,6 +4789,16 @@ function initHero3D() {
 
 
   <style>
+    #login-gate{position:fixed;inset:0;z-index:100000;background:radial-gradient(ellipse at 50% 30%,#2a1d4e 0%,#0d0a1a 70%);display:flex;align-items:center;justify-content:center;padding:18px;}
+    .lg-card{background:rgba(22,17,38,.92);border:1px solid rgba(255,215,94,.25);border-radius:20px;padding:34px 28px;max-width:360px;width:100%;text-align:center;box-shadow:0 18px 60px rgba(0,0,0,.6);}
+    .lg-mono{width:64px;height:64px;margin:0 auto 16px;border-radius:16px;background:linear-gradient(135deg,#ffd75e,#e8a520);display:flex;align-items:center;justify-content:center;font-size:30px;}
+    .lg-title{font-size:1.5rem;font-weight:700;color:#ffd75e;margin-bottom:6px;}
+    .lg-sub{font-size:.9rem;color:#b8a8d8;margin-bottom:18px;}
+    .lg-input{width:100%;box-sizing:border-box;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font-size:1rem;text-align:center;margin-bottom:10px;}
+    .lg-input:focus{outline:none;border-color:#ffd75e;}
+    .lg-err{display:none;color:#e74c3c;font-size:.85rem;margin-bottom:10px;}
+    .lg-btn{width:100%;margin-bottom:10px;}
+    .lg-new{font-size:.85rem;color:#8f7fb8;cursor:pointer;text-decoration:underline;background:none;border:none;padding:4px;}
     #game-loader{position:fixed;inset:0;z-index:99999;background:radial-gradient(ellipse at 50% 30%,#2a1d4e 0%,#0d0a1a 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:34px;transition:opacity .7s ease;}
     #game-loader.gone{opacity:0;pointer-events:none;}
     .ld-cubes{display:flex;gap:26px;}
@@ -4809,11 +4821,66 @@ function initHero3D() {
     (function(){
       var RU=['Пробуждение духа…','Небеса не жалуют нетерпеливых…','Открытие небесных врат…','Совет: вступи в гильдию — одинокий культиватор не переживёт первой бури 🏰','Совет: пайка в сумке ценнее золота в кармане 🍖','Страж Возвышения ждёт на каждой десятой вершине…','Совет: корми питомца — и он отплатит силой 🐾','Совет: Автобой ×5 — быстрый путь опыта, когда руки заняты делами ⚡','Врата открыты. Добро пожаловать, культиватор…'];
       var EN=['Awakening the spirit…','The Heavens show no mercy to the impatient…','Opening the celestial gates…','Tip: join a guild — a lone cultivator will not survive the first storm 🏰','Tip: rations in the bag are worth more than gold in the pocket 🍖','The Ascension Guardian awaits atop every tenth peak…','Tip: feed your pet — it will repay you with strength 🐾','Tip: Auto-battle ×5 is a fast path to experience while your hands are busy ⚡','The gates are open. Welcome, cultivator…'];
-      var _l=null; try{_l=localStorage.getItem('np_lang')}catch(e){}; var msgs=(_l==='en')?EN:RU, idx=0, msg=document.getElementById('ld-msg'), box=document.getElementById('game-loader');
+      var _l=null; try{_l=localStorage.getItem('np_lang')}catch(e){}; if(!_l){try{var _nl=(navigator.language||'ru');_l=/^ru/i.test(_nl)?'ru':'en';}catch(e){_l='ru';}}; var msgs=(_l==='en')?EN:RU, idx=0, msg=document.getElementById('ld-msg'), box=document.getElementById('game-loader');
       if(msg) msg.textContent=msgs[0];
       var t=setInterval(function(){ idx=(idx+1)%msgs.length; if(msg) msg.textContent=msgs[idx]; },950);
       setTimeout(function(){ clearInterval(t); if(box){ box.classList.add('gone'); setTimeout(function(){ box.remove(); },750);} },3300);
     })();
+  </script>
+
+  <div id="login-gate" style="display:none">
+    <div class="lg-card">
+      <div class="lg-mono">🪷</div>
+      <div class="lg-title" id="lg-title">Войдите</div>
+      <div class="lg-sub" id="lg-sub">Врата ждут своего культиватора</div>
+      <input class="lg-input" id="lg-pass" type="password" placeholder="Введите пароль" autocomplete="off">
+      <div class="lg-err" id="lg-err">Неверный пароль. Попробуй снова</div>
+      <button class="btn btn-primary lg-btn" id="lg-btn" onclick="gateLogin()">Войти</button>
+      <button class="lg-new" id="lg-new" onclick="gateNewHero()">Создать нового героя</button>
+    </div>
+  </div>
+
+  <script>
+    function gateLogin(){
+      var p = document.getElementById('lg-pass'), err = document.getElementById('lg-err'), g = document.getElementById('login-gate');
+      var v = p ? String(p.value) : '';
+      if (state.passHash) {
+        var h; try { h = btoa(unescape(encodeURIComponent(v))); } catch(e) { h = ''; }
+        if (h !== state.passHash) { if (err) err.style.display = 'block'; if (p) p.value = ''; return; }
+      }
+      try { localStorage.removeItem('np_logged_out'); } catch(e) {}
+      if (err) err.style.display = 'none';
+      if (p) p.value = '';
+      g.style.display = 'none';
+      showToast((T('gateWelcome') || 'С возвращением, ') + (state.name || ''));
+    }
+    function gateNewHero(){
+      if (!confirm(T('signOutQ'))) return;
+      var t = prompt(T('signOutType'), '');
+      if (!t || String(t).trim().toUpperCase() !== T('signOutWord')) { showToast(T('signOutCancelled')); return; }
+      try {
+        var ks = []; for (var i = 0; i < localStorage.length; i++) ks.push(localStorage.key(i));
+        ks.filter(function(k){ return k.indexOf('nebesnyy_') === 0 || k.indexOf('np_') === 0; }).forEach(function(k){ localStorage.removeItem(k); });
+      } catch(e) {}
+      location.reload();
+    }
+    function initLoginGate(){
+      var need = false; try { need = localStorage.getItem('np_logged_out') === '1'; } catch(e) {}
+      if (!need) return;
+      var g = document.getElementById('login-gate'); if (!g) return;
+      var L = (state.lang === 'en');
+      var t = document.getElementById('lg-title'), sub = document.getElementById('lg-sub'),
+          p = document.getElementById('lg-pass'), err = document.getElementById('lg-err'),
+          btn = document.getElementById('lg-btn'), nb = document.getElementById('lg-new');
+      if (t) t.textContent = L ? 'Sign in' : 'Войдите';
+      if (sub) sub.textContent = L ? 'The gates await their cultivator' : 'Врата ждут своего культиватора';
+      if (p) { p.placeholder = L ? 'Enter password' : 'Введите пароль'; if (!state.passHash) p.placeholder = L ? 'No password set — just enter' : 'Пароль не задан — просто войдите'; }
+      if (err) err.textContent = L ? 'Wrong password. Try again' : 'Неверный пароль. Попробуй снова';
+      if (btn) btn.textContent = L ? 'Sign in' : 'Войти';
+      if (nb) nb.textContent = L ? 'Create new hero' : 'Создать нового героя';
+      setTimeout(function(){ g.style.display = 'flex'; if (p && state.passHash) { try { p.focus(); } catch(e) {} } }, 2900);
+    }
+    initLoginGate();
   </script>
 </body>
 </html>
