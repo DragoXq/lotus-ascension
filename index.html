@@ -263,10 +263,6 @@
       .exp-hud-right { flex-wrap: wrap; justify-content: center; padding: 5px 8px; }
       .exp-card { max-width: 100%; width: 100%; padding: 10px 8px; }
       .exp-card .btn { font-size: 0.85rem; padding: 9px 12px; }
-      .exp-battle-card { width: 100% !important; max-height: 70vh; overflow-y: auto; }
-      .exp-battle-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
-      .exp-battle-btns .btn { font-size: 0.85rem; padding: 10px 8px; }
-      .exp-battle-btns .btn:last-child { grid-column: 1 / -1; }
       #exp-modal .modal-card { max-width: 100%; max-height: 88vh; }
       .lg-card { padding: 24px 16px; max-width: 320px; }
       .lg-input { font-size: 16px; }
@@ -3254,24 +3250,11 @@ function selectGender(g) {
       return STORY_CHAPTERS[Math.min(s.chapter, STORY_CHAPTERS.length - 1)];
     }
 
-    function storyProgressPct(){
-      const st = ensureStory();
-      const ch = getCurrentChapter();
-      const sc = Math.max(1, ch.steps.length);
-      const sExp = (st.expPct && st.expPct[st.locationId]) || 0;
-      let p = Math.min(100, Math.max(sExp, Math.floor((st.step / sc) * 100)));
-      if (st.step >= sc) {
-        const bs = (typeof STORY_BOSSES !== 'undefined') ? STORY_BOSSES.filter(x => x.chapter === st.chapter) : [];
-        const allDone = bs.length > 0 && bs.every(x => st.defeatedBosses.includes(x.id));
-        p = allDone ? 100 : Math.min(p, 95);
-      }
-      return p;
-    }
     function renderStory() {
       const s = ensureStory();
       const chapter = getCurrentChapter();
       const stepsCount = chapter.steps.length;
-      const progress = storyProgressPct();
+      const sExpPct = (s.expPct && s.expPct[s.locationId]) || 0; const progress = Math.min(100, Math.max(sExpPct, Math.floor(((s.step) / stepsCount) * 100)));
       const loc = LOCATIONS.find(l => l.id === s.locationId) || LOCATIONS[0];
 
       document.getElementById('story-hint').innerHTML = '<strong>Глава ' + (chapter.id + 1) + ':</strong> ' + chapter.title;
@@ -3414,14 +3397,7 @@ function selectGender(g) {
       expInitHud(); expUpdateHud();
       document.getElementById('exp-modal').classList.remove('hidden');
     }
-    function closeExplore(){
-      if (EXP.battleTimer && EXP.battleTimer.timer) { clearInterval(EXP.battleTimer.timer); EXP.battleTimer.timer = null; }
-      EXP.battleTimer = null;
-      const ov = document.getElementById('exp-battle-ov'); if (ov) ov.remove();
-      const ebn = document.getElementById('exp-btn');
-      if (ebn) { ebn.style.display = ''; renderExplore(); }
-      document.getElementById('exp-modal').classList.add('hidden');
-    }
+    function closeExplore(){ document.getElementById('exp-modal').classList.add('hidden'); if (bsGet()) bsClose(); }
     function expUnlocked(){ return LOCATIONS.filter(l => ensureStory().unlockedLocations.includes(l.id)); }
     function renderExplore(){
       const st = ensureStory();
@@ -3432,16 +3408,16 @@ function selectGender(g) {
       const done = !!st.explored[key];
       const b = document.getElementById('exp-btn');
       if (b) {
-        const ch = getCurrentChapter();
-        const allSteps = st.step >= ch.steps.length;
-        const bs = (typeof STORY_BOSSES !== 'undefined') ? STORY_BOSSES.filter(x => x.chapter === st.chapter) : [];
-        const boss = bs.find(x => !st.defeatedBosses.includes(x.id));
-        if (allSteps && boss) {
-          b.disabled = false; b.style.display = ''; b.textContent = '👹 Босс ждёт';
-          b.onclick = function(){ fightStoryBoss(boss.id); };
+        const cur = getCurrentChapter();
+        const bs = cur ? STORY_BOSSES.find(function(x){ return x.chapter === st.chapter; }) : null;
+        const bossAlive = bs && !st.defeatedBosses.includes(bs.id);
+        if (done && bossAlive) {
+          b.disabled = false; b.style.display = '';
+          b.textContent = '👹 Босс ждёт';
+          b.onclick = function(){ fightStoryBoss(bs.id); };
         } else {
-          b.disabled = done; b.textContent = done ? 'Уже исследовано' : 'Исследовать';
-          b.onclick = function(){ expDoExplore(); };
+          b.disabled = done; b.style.display = '';
+          b.textContent = done ? 'Уже исследовано' : 'Исследовать';
         }
       }
     }
@@ -3603,7 +3579,7 @@ function selectGender(g) {
       var items = [
         { k:'ration', ico:'🍖', name:'Пайка', price:30, desc:'Восстанавливает 1 ед. здоровья — забери в инвентаре' },
         { k:'pick',   ico:'🗝', name:'Отмычка от цепей', price:120, desc:'Мгновенно снимает отдых после поражения' },
-        { k:'potion', ico:'🧪', name:'Зелье жизни', price:60, desc:'+40% жизни — предмет в инвентаре' }
+        { k:'potion', ico:'🧪', name:'Зелье жизни', price:60, desc:'+25 здоровья сразу' }
       ];
       var html = '';
       for (var i = 0; i < items.length; i++) {
@@ -3633,8 +3609,8 @@ function selectGender(g) {
         if (gold < 60) { showToast('🪙 Не хватает золота — нужно 60'); return; }
         state.gold = gold - 60;
         state.potions = (state.potions || 0) + 1;
-        showToast('🧪 Зелье куплено — оно ждёт в инвентаре');
-        addLog('Купил зелье жизни (+40% жизни при выпивании)', 'win');
+        showToast('🧪 Зелье жизни куплено — оно ждёт в инвентаре');
+        addLog('Купил зелье жизни в магазине', 'win');
       }
       updateUI(); expUpdateHud(); updateFoodUI(); updateRestUI(); renderShop(); save();
     }
@@ -3657,134 +3633,183 @@ function selectGender(g) {
         + '<div style="flex:1;min-width:0">'
         + '<div style="font-weight:700;color:var(--text)">Зелья жизни <span style="font-weight:800;color:var(--gold,#f5b942)">' + p + '</span></div>'
         + '<div style="font-size:0.8rem;color:var(--text)">Восстанавливает 40% здоровья</div>'
-        + '<div style="font-size:0.74rem;font-style:italic;color:#c9a24a;opacity:.85">«Роса с лепестков лотоса — сила в глотке»</div>'
+        + '<div style="font-size:0.74rem;font-style:italic;color:#c9a24a;opacity:.85">«Капля небесной росы — и раны тумана тают»</div>'
         + '</div>'
         + '<button class="btn btn-primary" style="width:auto;flex:0 0 auto;padding:6px 14px;font-size:0.75rem;white-space:nowrap;' + (p <= 0 ? 'opacity:.5;pointer-events:none;' : '') + '" onclick="drinkPotion(); renderInv();">Выпить</button>'
         + '</div>';
       box.innerHTML = row + prow;
     }
-    function drinkPotion(){
-      if ((state.potions || 0) <= 0) { showToast('🧪 Зелий нет — купи в магазине 🏪 или побеждай монстров'); return; }
-      const mx = Math.max(1, Math.floor(state.maxPlayerHp || 100));
-      const before = Math.max(0, Math.floor(state.playerHp || 0));
-      if (before >= mx) { showToast('Жизнь уже полная'); return; }
-      state.potions -= 1;
-      state.playerHp = Math.min(mx, before + Math.floor(mx * 0.4));
-      const healed = Math.floor(state.playerHp) - before;
-      showToast('🧪 Зелье выпито: +' + healed + ' жизни');
-      addLog('Выпил зелье жизни: +' + healed + ' жизни', 'win');
-      updateUI(); expUpdateHud(); save();
-    }
     function updateFoodUI(){
       const el = document.getElementById('food-count');
       if (el) el.textContent = state.food || 0;
     }
-    function expBattleUpdate(b){
-      const mx = Math.max(1, b.pHpMax);
-      const hp = Math.max(0, Math.floor(state.playerHp || 0));
-      const ph = document.getElementById('eb-php'), mh = document.getElementById('eb-mhp');
-      const phn = document.getElementById('eb-phpn'), mhn = document.getElementById('eb-mhpn');
-      if (ph) ph.style.width = Math.max(0, hp / mx * 100) + '%';
-      if (mh) mh.style.width = Math.max(0, b.mHp / b.mHpMax * 100) + '%';
-      if (phn) phn.textContent = hp + '/' + mx;
-      if (mhn) mhn.textContent = Math.max(0, b.mHp) + '/' + b.mHpMax;
-      const pb = document.getElementById('eb-pot');
+    function storyProgressPct(){
+      const st = ensureStory();
+      const cur = getCurrentChapter();
+      const stepPct = (cur && cur.steps && cur.steps.length) ? Math.min(100, Math.round(st.step / cur.steps.length * 100)) : 0;
+      const exp = Math.min(100, (st.expPct && st.expPct[st.locationId]) || 0);
+      const bs = STORY_BOSSES.find(function(x){ return x.chapter === st.chapter; });
+      if (bs && st.defeatedBosses.includes(bs.id)) return 100;
+      return Math.min(95, Math.max(exp, stepPct));
+    }
+    function bsGet(){ return document.getElementById('bs-screen'); }
+    function bsSetBtns(dis){
+      const box = document.getElementById('bs-actions');
+      if (!box) return;
+      Array.prototype.forEach.call(box.querySelectorAll('.bs-act'), function(btn){ if (dis) btn.setAttribute('disabled',''); else btn.removeAttribute('disabled'); });
+      const pb = document.getElementById('bs-pot');
       if (pb) pb.textContent = '🧪 Зелье ×' + (state.potions || 0);
     }
-    function expBattleAct(kind){
+    function bsClose(){
+      const el = bsGet();
+      if (el) el.remove();
+      const b = EXP.battleTimer;
+      if (b && b.timer) { clearInterval(b.timer); b.timer = null; }
+      EXP.battleTimer = null;
+      const eb = document.getElementById('exp-btn'); if (eb) eb.style.display = '';
+      expUpdateHud(); renderExplore(); save();
+    }
+    function bsBar(b, log){
+      const ph = document.getElementById('bs-php'), mh = document.getElementById('bs-mhp');
+      const phn = document.getElementById('bs-phpn'), mhn = document.getElementById('bs-mhpn');
+      const rd = document.getElementById('bs-round');
+      const lg = document.getElementById('bs-log');
+      const mx = Math.max(1, b.pHpMax);
+      const hp = Math.max(0, Math.floor(state.playerHp || 0));
+      if (ph) ph.style.width = Math.max(0, hp / mx * 100) + '%';
+      if (mh) mh.style.width = Math.max(0, b.mHp) / Math.max(1, b.mHpMax) * 100 + '%';
+      if (phn) phn.textContent = hp + '/' + mx;
+      if (mhn) mhn.textContent = Math.max(0, b.mHp) + '/' + b.mHpMax;
+      if (rd) rd.textContent = 'Раунд ' + b.round;
+      if (lg && log !== undefined) lg.textContent = log;
+    }
+    function bsHit(cls){
+      const f = document.querySelector('.bs-fighter.' + cls);
+      if (!f) return;
+      f.classList.remove('hit'); void f.offsetWidth; f.classList.add('hit');
+    }
+    function bsPlayerDmg(b){
+      const ratio = Math.min(1.4, Math.max(0.7, b.my / b.mp));
+      return Math.max(3, Math.floor(b.mHpMax * (0.16 + Math.random() * 0.08) * ratio));
+    }
+    function bsMonsterDmg(b, guard){
+      const ratio = Math.min(1.5, Math.max(0.75, b.mp / b.my));
+      let d = Math.max(2, Math.floor(b.pHpMax * (0.06 + Math.random() * 0.04) * ratio));
+      if (guard) d = Math.max(1, Math.floor(d * 0.3));
+      return d;
+    }
+    function bsAct(type){
       const b = EXP.battleTimer;
       if (!b || b.done) return;
-      if (kind === 'pot' && (state.potions || 0) <= 0) { showToast('🧪 Зелий нет — купи в магазине 🏪 или побеждай монстров'); return; }
+      if (type === 'potion' && !(state.potions > 0)) { showToast('🧪 Зелий нет — купи в магазине 🏪 или побеждай монстров'); return; }
+      bsSetBtns(true);
       b.round++;
-      const log = document.getElementById('eb-log');
-      const parts = [];
-      const ratio = Math.min(1.6, Math.max(0.6, b.my / Math.max(1, b.mp)));
-      let pd = 0;
-      if (kind === 'run') {
-        if (Math.random() < 0.5) { b.done = true; expEndBattle('skip', b.el, b, b.mp, b.my); return; }
-        parts.push('🏃 Сбежать не вышло — монстр бьёт бесплатно!');
-      } else if (kind === 'heavy' && Math.random() < 0.30) {
-        parts.push('💥 Сила небес ушла в молоко — промах');
-      } else {
-        pd = Math.max(3, Math.floor(b.mHpMax * (0.16 + Math.random() * 0.08) * ratio));
-        if (kind === 'heavy') pd = Math.floor(pd * 2.2);
-        const crit = Math.random() < 0.15;
-        if (crit) pd *= 2;
-        b.mHp -= pd;
-        parts.push((kind === 'heavy' ? '💥 Сила небес снимает ' : '⚔ Ты бьёшь на ') + pd + (crit ? ' (КРИТ!)' : ''));
+      let log = '';
+      let end = null;
+      if (type === 'attack' || type === 'sky') {
+        if (type === 'sky' && Math.random() < 0.3) {
+          log = '💥 Сила небес ушла в туман — промах!';
+        } else {
+          let pd = bsPlayerDmg(b);
+          if (type === 'sky') pd = Math.floor(pd * 2.2);
+          let crit = Math.random() < 0.15;
+          if (crit) pd *= 2;
+          b.mHp -= pd;
+          bsHit('mst');
+          log = (type === 'sky' ? '💥 Сила небес: -' + pd : '⚔ Атака: -' + pd) + (crit ? ' КРИТ!' : '');
+        }
+      } else if (type === 'guard') {
+        log = '🛡 Защита: стойка крепка';
+      } else if (type === 'potion') {
+        const mx = Math.max(1, b.pHpMax);
+        const before = Math.max(0, Math.floor(state.playerHp || 0));
+        const heal = Math.min(mx - before, Math.floor(mx * 0.4));
+        state.potions -= 1; b.pot = state.potions;
+        state.playerHp = before + heal;
+        log = '🧪 Зелье: +' + heal + ' жизни';
+      } else if (type === 'flee') {
+        if (Math.random() < 0.5) {
+          b.done = true;
+          expEndBattle('skip');
+          return;
+        }
+        log = '🏃 Побег не удался — монстр настигает!';
       }
-      let md = 0;
-      if (b.mHp > 0) {
-        md = Math.max(2, Math.floor(b.pHpMax * (0.06 + Math.random() * 0.04)));
-        const mcr = Math.random() < 0.15;
-        if (mcr) md *= 2;
-        if (kind === 'def') md = Math.max(1, Math.floor(md * 0.3));
-        state.playerHp = Math.max(0, (state.playerHp || 0) - md);
-        parts.push(kind === 'def' ? '🛡 Заблокировал: монстр снял только ' + md + (mcr ? ' (КРИТ!)' : '') : 'Монстр бьёт по жизни на ' + md + (mcr ? ' (КРИТ!)' : ''));
-        if (kind === 'def' && state.playerHp > 0) {
-          const heal = Math.max(1, Math.floor(b.pHpMax * 0.08));
-          state.playerHp = Math.min(b.pHpMax, (state.playerHp || 0) + heal);
-          parts.push('Медитация: +' + heal + ' жизни');
+      // ход монстра
+      if (b.mHp > 0 && state.playerHp > 0) {
+        const guard = type === 'guard';
+        const md = bsMonsterDmg(b, guard);
+        let mcrit = Math.random() < 0.15;
+        let dmg = mcrit ? md * 2 : md;
+        state.playerHp = Math.max(0, Math.floor(state.playerHp) - dmg);
+        bsHit('player');
+        log += ' · Монстр: -' + dmg + (mcrit ? ' КРИТ!' : '');
+        if (guard) {
+          const heal = Math.floor(b.pHpMax * 0.08);
+          state.playerHp = Math.min(b.pHpMax, state.playerHp + heal);
+          log += ' · 🛡 Медитация: +' + heal;
         }
       }
-      if (kind === 'pot') {
-        state.potions = Math.max(0, (state.potions || 0) - 1);
-        const heal = Math.max(1, Math.floor(b.pHpMax * 0.40));
-        state.playerHp = Math.min(b.pHpMax, (state.playerHp || 0) + heal);
-        parts.unshift('🧪 Зелье: +' + heal + ' жизни');
-      }
-      if (log) log.textContent = 'Раунд ' + b.round + ': ' + parts.join('; ');
-      expBattleUpdate(b);
+      bsBar(b, log);
       expUpdateHud(); updateUI(); save();
-      if (b.mHp <= 0) { b.done = true; expEndBattle('win', b.el, b, b.mp, b.my); return; }
-      if (state.playerHp <= 0) { b.done = true; expEndBattle('lose', b.el, b, b.mp, b.my); return; }
+      if (b.mHp <= 0 || state.playerHp <= 0) {
+        b.done = true;
+        expEndBattle(b.mHp <= 0 ? 'win' : 'lose');
+      } else {
+        setTimeout(function(){ bsSetBtns(false); }, 350);
+      }
     }
+    function expAttackRound(){ bsAct('attack'); }
     function expAutoBattle(el){
-      if (document.getElementById('exp-battle-ov')) return;
+      if (bsGet()) return;
       const st = ensureStory();
       ensureFood();
       const mp = 22 + st.chapter * 28 + Math.floor(Math.random() * 22);
       const my = getTotalPower() + getOwnedPower();
       const mHpMax = expMonsterHp(st.chapter);
       const b = { mp: mp, mHp: mHpMax, mHpMax: mHpMax, round: 0, el: el, my: my,
-        pHpMax: Math.max(1, Math.floor(state.maxPlayerHp || 100)) };
+        pot: state.potions || 0, pHpMax: Math.max(1, Math.floor(state.maxPlayerHp || 100)) };
       EXP.battleTimer = b;
       const eb = document.getElementById('exp-btn'); if (eb) eb.style.display = 'none';
-      expUpdateHud();
-      const sc = document.getElementById('exp-scene');
-      const ov = document.createElement('div'); ov.id = 'exp-battle-ov'; ov.className = 'exp-battle-ov';
-      ov.innerHTML = '<div class="exp-battle-card">' +
-        '<div style="text-align:center;font-weight:800;color:var(--gold);font-size:17px">⚔ Бой</div>' +
-        '<div class="exp-battle-row"><div class="exp-battle-side"><div class="exp-hud-lbl">Ты — сила ' + my + '</div>' +
-        '<div class="exp-battle-hp"><div id="eb-php" style="background:#43c463;width:100%"></div></div>' +
-        '<div class="exp-hud-lbl" id="eb-phpn">1/1</div></div>' +
-        '<div class="exp-battle-side" style="text-align:right"><div class="exp-hud-lbl">Монстр — сила ' + mp + '</div>' +
-        '<div class="exp-battle-hp"><div id="eb-mhp" style="background:#e5485a;width:100%"></div></div>' +
-        '<div class="exp-hud-lbl" id="eb-mhpn">' + mHpMax + '/' + mHpMax + '</div></div></div>' +
-        '<div style="text-align:center;color:#8a93a6;min-height:38px;font-size:13px" id="eb-log">Выбери действие, культиватор</div>' +
-        '<div class="exp-battle-btns">' +
-        '<button class="btn btn-primary" onclick="expBattleAct(\'atk\')">⚔ Атака</button>' +
-        '<button class="btn btn-primary" onclick="expBattleAct(\'heavy\')">💥 Сила небес</button>' +
-        '<button class="btn btn-primary" onclick="expBattleAct(\'def\')">🛡 Защита</button>' +
-        '<button class="btn btn-primary" id="eb-pot" onclick="expBattleAct(\'pot\')">🧪 Зелье ×' + (state.potions || 0) + '</button>' +
-        '<button class="btn btn-secondary" onclick="expBattleAct(\'run\')">🏃 Сбежать</button></div></div>';
-      sc.appendChild(ov);
-      expBattleUpdate(b);
+      const ava = (typeof getHeroAvatar === 'function') ? getHeroAvatar() : '🧙';
+      const wrap = document.createElement('div');
+      wrap.id = 'bs-screen'; wrap.className = 'bs-screen';
+      wrap.innerHTML =
+        '<div class="bs-top"><div class="bs-title">⚔ Бой</div><div class="bs-round" id="bs-round">Раунд 0</div>' +
+        '<button class="bs-x" onclick="bsClose()">✕</button></div>' +
+        '<div class="bs-arena">' +
+          '<div class="bs-fighter player"><div class="bs-nm">Ты — сила ' + my + '</div><div class="bs-ava">' + ava + '</div>' +
+          '<div class="bs-hpbar"><div id="bs-php" style="background:#43c463;width:100%"></div></div><div class="bs-hpn" id="bs-phpn">1/1</div></div>' +
+          '<div class="bs-vs">VS</div>' +
+          '<div class="bs-fighter mst"><div class="bs-nm">Монстр — сила ' + mp + '</div>' +
+          '<img src="' + MONSTER_IMG + '" alt="монстр">' +
+          '<div class="bs-hpbar"><div id="bs-mhp" style="background:#e5485a;width:100%"></div></div><div class="bs-hpn" id="bs-mhpn">' + mHpMax + '/' + mHpMax + '</div></div>' +
+        '</div>' +
+        '<div class="bs-mid"><div class="bs-log" id="bs-log">Выбери действие, культиватор</div></div>' +
+        '<div class="bs-actions" id="bs-actions">' +
+          '<button class="bs-act atk" onclick="bsAct(\'attack\')">⚔ Атака</button>' +
+          '<button class="bs-act sky" onclick="bsAct(\'sky\')">💥 Сила небес</button>' +
+          '<button class="bs-act" onclick="bsAct(\'guard\')">🛡 Защита</button>' +
+          '<button class="bs-act" id="bs-pot" onclick="bsAct(\'potion\')">🧪 Зелье ×' + (state.potions || 0) + '</button>' +
+          '<button class="bs-act flee" onclick="bsAct(\'flee\')">🏃 Сбежать</button>' +
+        '</div>';
+      document.body.appendChild(wrap);
+      bsBar(b);
     }
-    function expEndBattle(res, el, b, mp, my){
-      const ov = document.getElementById('exp-battle-ov');
-      if (EXP.battleTimer && EXP.battleTimer.timer) { clearInterval(EXP.battleTimer.timer); EXP.battleTimer.timer = null; }
-      if (ov) ov.remove();
-      const ebn = document.getElementById('exp-btn');
-      if (ebn) { ebn.style.display = ''; renderExplore(); }
+    function expEndBattle(res){
+      const b = EXP.battleTimer;
+      if (b && b.timer) { clearInterval(b.timer); b.timer = null; }
       if (res === 'skip') {
-        if (el) el.dataset.fighting = '';
-        expUpdateHud(); save();
+        if (b && b.el) b.el.dataset.fighting = '';
+        EXP.battleTimer = null;
+        bsClose();
+        addLog('Отступил от монстра', 'info');
         return;
       }
+      const win = res === 'win';
       const st = ensureStory();
-      if (ov) ov.remove();
-      if (res === 'win') {
+      EXP.battleTimer = null;
+      if (win) {
         const exp = 18 + st.chapter * 12 + Math.floor(Math.random() * 10);
         const stones = 3 + st.chapter * 2;
         const gold = 10 + st.chapter * 8;
@@ -3794,38 +3819,64 @@ function selectGender(g) {
         const curCh = getCurrentChapter();
         if (st.step < curCh.steps.length) { st.step += 1; }
         renderStory();
-        if (el) el.remove();
+        if (b && b.el) b.el.remove();
         const lx = Math.min(88, Math.max(12, EXP.pos + EXP.dir * 18));
         const loot = document.createElement('div');
         loot.className = 'exp-item loot';
         loot.style.left = lx + '%';
         loot.innerHTML = '<img src="' + CHEST_IMG + '" style="height:56px;width:auto;display:block;margin-bottom:36px" alt="сундук добычи">';
         loot.onclick = function(){ expOpenLootChest(loot); };
-        document.getElementById('exp-items').appendChild(loot);
-        expResultWindow(true, [
+        const ei = document.getElementById('exp-items');
+        if (ei) ei.appendChild(loot);
+        state.food = (state.food || 0) + 1;
+        const rows = [
           ['Опыт', '+' + exp],
           ['Алмазы', '+' + big],
           ['Золото', '+' + gold],
           ['Эссенция', '+' + essence],
           ['Кристаллы в сундуке', '+' + stones],
-          ['🍖 Паёк', '+1 (кушать в инвентаре)']
-        ].concat(Math.random() < 0.35 ? [['🧪 Зелье жизни', '+1 (монстр уронил)']] : []));
-        state.food = (state.food || 0) + 1;
-        if (Math.random() < 0.35) state.potions = (state.potions || 0) + 1;
+          ['🍖 Паёк', '+1']
+        ];
+        if (Math.random() < 0.35) {
+          state.potions = (state.potions || 0) + 1;
+          rows.push(['🧪 Зелье жизни', '+1 (в инвентаре)']);
+        }
+        bsShowResult(true, rows);
         addLog('Победил монстра: сундук добычи впереди, +1 паёк', 'win');
       } else {
-        if (el) el.dataset.fighting = '';
+        if (b && b.el) b.el.dataset.fighting = '';
         state.playerHp = Math.max(1, Math.floor((state.maxPlayerHp || 100) * 0.3));
         st.step = 0;
         st.expPct[st.locationId] = 0;
         Object.keys(st.explored).forEach(function(k){ if (k.indexOf(st.locationId + '_') === 0) delete st.explored[k]; });
         state.restUntil = Date.now() + 5 * 60 * 1000;
         renderStory(); expUpdateHud(); updateRestUI();
-        expResultWindow(false, [['Добыча', 'досталась монстру'], ['Жизнь', 'отступил с 30%'], ['Прогресс', 'сброшен до 0%'], ['Отдых', '5 минут под цепями']]);
-        setTimeout(closeExplore, 2700);
-        addLog('Проиграл монстру (сила ' + mp + '): прогресс главы сброшен, отдых 5 минут', 'lose');
+        bsShowResult(false, [['Добыча', 'досталась монстру'], ['Жизнь', 'отступил с 30%'], ['Прогресс', 'сброшен до 0%'], ['Отдых', '5 минут под цепями']]);
+        addLog('Проиграл монстру (сила ' + (b ? b.mp : 0) + '): прогресс главы сброшен, отдых 5 минут', 'lose');
       }
+      const eb = document.getElementById('exp-btn'); if (eb) eb.style.display = '';
       expUpdateHud(); updateUI(); save();
+    }
+    function bsShowResult(win, rows){
+      const sc = bsGet();
+      if (!sc) { expResultWindow(win, rows); return; }
+      let html = '<div class="bs-result"><div class="card">' +
+        '<div style="font-weight:900;font-size:21px;color:' + (win ? '#43c463' : '#e5485a') + ';margin-bottom:8px">' + (win ? 'Вы выиграли!' : 'Вы проиграли!') + '</div>';
+      rows.forEach(function(r){ html += '<div class="rrow"><span>' + r[0] + '</span><b>' + r[1] + '</b></div>'; });
+      html += '<button class="bs-close-btn" onclick="bsClose()">' + (win ? 'Продолжить путь' : 'Продолжить') + '</button></div></div>';
+      const old = sc.querySelector('.bs-result');
+      if (old) old.remove();
+      sc.insertAdjacentHTML('beforeend', html);
+    }
+    function drinkPotion(){
+      const mx = Math.max(1, Math.floor(state.maxPlayerHp || 100));
+      const before = Math.max(0, Math.floor(state.playerHp || 0));
+      if (!(state.potions > 0)) { showToast('🧪 Зелий нет — купи в магазине 🏪'); return; }
+      if (before >= mx) { showToast('Жизнь уже полная'); return; }
+      state.potions -= 1;
+      state.playerHp = Math.min(mx, before + Math.floor(mx * 0.4));
+      showToast('🧪 Зелье выпито: +' + (Math.floor(state.playerHp) - before) + ' жизни');
+      updateUI(); expUpdateHud(); updateFoodUI(); renderInv(); save();
     }
     function expResultWindow(win, rows){
       const old = document.getElementById('exp-result-ov');
@@ -4811,7 +4862,7 @@ function initHero3D() {
 
     init();
       // ===================== ЭКСПОРТ/ИМПОРТ СЕЙВА + АВТООБНОВЛЕНИЕ =====================
-    var APP_VERSION = '2.2.0';
+    var APP_VERSION = '2.3.0';
     function cmpVer(a,b){ var A=String(a).split('.'),B=String(b).split('.'); for(var i=0;i<3;i++){ var x=parseInt(A[i]||0,10),y=parseInt(B[i]||0,10); if(x>y)return 1; if(x<y)return -1; } return 0; }
     function dismissUpdate(){ try{ localStorage.setItem('np_upd_dismissed', window.__npRemoteVer || APP_VERSION); }catch(e){} location.reload(); }
     function strHash(s) { var h = 5381; s = String(s); for (var i = 0; i < s.length; i++) { h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; } return h.toString(36); }
@@ -4922,7 +4973,51 @@ function initHero3D() {
     .ld-bar{width:min(320px,70vw);height:5px;border-radius:3px;background:rgba(255,255,255,.09);overflow:hidden;}
     .ld-bar i{display:block;height:100%;width:0;border-radius:3px;background:linear-gradient(90deg,#ffd75e,#c084fc);animation:ldFill 3.3s linear forwards;}
     @keyframes ldFill{to{width:100%}}
-  </style>
+  
+/* ===== Боевой экран 2.3.0 ===== */
+.bs-screen{position:fixed;inset:0;z-index:10050;background:radial-gradient(120% 90% at 50% 0%,#241f38 0%,#14121f 55%,#0b0a12 100%);display:flex;flex-direction:column;animation:bsIn .25s ease}
+@keyframes bsIn{from{opacity:0;transform:scale(1.03)}to{opacity:1;transform:scale(1)}}
+.bs-top{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid rgba(245,185,66,.25);flex:none}
+.bs-title{font-weight:900;color:var(--gold,#f5b942);font-size:18px}
+.bs-round{color:#8a93a6;font-size:13px}
+.bs-x{background:none;border:none;color:#8a93a6;font-size:22px;cursor:pointer;padding:4px 8px}
+.bs-arena{flex:1;display:flex;align-items:flex-end;justify-content:space-between;padding:8px 14px 0;min-height:0;overflow:hidden;position:relative}
+.bs-fighter{display:flex;flex-direction:column;align-items:center;gap:6px;max-width:44%;animation:bsIdle 2.6s ease-in-out infinite}
+.bs-fighter.mst{animation-delay:1.3s}
+@keyframes bsIdle{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.bs-fighter img{height:170px;width:auto;display:block;filter:drop-shadow(0 10px 18px rgba(0,0,0,.6))}
+.bs-fighter .bs-ava{font-size:74px;line-height:1.1;filter:drop-shadow(0 8px 14px rgba(0,0,0,.6))}
+.bs-fighter .bs-hpbar{width:120px;height:9px;border-radius:6px;background:rgba(255,255,255,.12);overflow:hidden}
+.bs-fighter .bs-hpbar>div{height:100%;border-radius:6px;transition:width .35s ease}
+.bs-fighter .bs-hpn{font-size:12px;font-weight:700;color:var(--text,#e8e6f0)}
+.bs-fighter .bs-nm{font-size:12px;color:#8a93a6;font-weight:700;white-space:nowrap}
+.bs-fighter.hit{animation:bsHit .4s ease}
+@keyframes bsHit{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}60%{transform:translateX(5px)}}
+.bs-vs{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);font-weight:900;font-size:26px;color:var(--gold,#f5b942);opacity:.85;text-shadow:0 0 18px rgba(245,185,66,.45)}
+.bs-mid{flex:none;padding:8px 16px 2px;text-align:center}
+.bs-log{color:#c9cfe0;font-size:13.5px;min-height:40px;max-height:78px;overflow:auto}
+.bs-hpwrap{display:flex;gap:14px;justify-content:center;font-size:12.5px;color:#8a93a6;margin-bottom:4px}
+.bs-actions{flex:none;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px 14px calc(12px + env(safe-area-inset-bottom));border-top:1px solid rgba(255,255,255,.08);background:rgba(10,9,18,.72)}
+.bs-act{border:none;border-radius:12px;padding:11px 8px;font-size:.88rem;font-weight:800;cursor:pointer;color:#fff;background:rgba(255,255,255,.07);transition:transform .12s ease,opacity .2s}
+.bs-act:active{transform:scale(.96)}
+.bs-act.atk{background:linear-gradient(135deg,#e5485a,#c73a4b)}
+.bs-act.sky{background:linear-gradient(135deg,#f5b942,#d99a2b);color:#241a05}
+.bs-act.flee{grid-column:1/-1;background:rgba(255,255,255,.09);color:#c9cfe0}
+.bs-act[disabled]{opacity:.45;pointer-events:none}
+.bs-result{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;background:rgba(8,7,14,.86);backdrop-filter:blur(3px);padding:20px}
+.bs-result .card{background:#1b1826;border:1px solid rgba(245,185,66,.35);border-radius:18px;padding:20px;max-width:340px;width:100%;text-align:center}
+.bs-result .rrow{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;color:#c9cfe0;padding:5px 2px;border-bottom:1px dashed rgba(255,255,255,.08)}
+.bs-result .rrow b{color:var(--gold,#f5b942)}
+.bs-close-btn{margin-top:14px;width:100%;border:none;border-radius:12px;padding:12px;font-weight:800;font-size:.95rem;cursor:pointer;background:linear-gradient(135deg,#43c463,#2fa04e);color:#fff}
+@media (max-width:640px){
+  .bs-fighter img{height:118px}
+  .bs-fighter .bs-ava{font-size:52px}
+  .bs-fighter .bs-hpbar{width:92px}
+  .bs-vs{font-size:19px}
+  .bs-act{padding:10px 6px;font-size:.82rem}
+  .bs-title{font-size:16px}
+}
+</style>
   <div id="game-loader">
     <div class="ld-cubes"><div class="ld-cube"></div><div class="ld-cube"></div><div class="ld-cube"></div></div>
     <div id="ld-msg"></div>
